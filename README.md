@@ -1,21 +1,20 @@
 -- ======================================================================
--- THULLERX STORE - HUB OFICIAL BLOX FRUITS (SOLARA ULTRA FIX)
+-- THULLERX STORE - HUB OFFICIAL BLOX FRUITS (SOLARA FIX)
 -- ======================================================================
 
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
-local Window = Rayfield:CreateWindow({
-   Name = "THULLERX STORE | Blox Fruits",
-   LoadingTitle = "Iniciando Script...",
-   LoadingSubtitle = "por ThullerX Store",
-   ConfigurationSaving = { Enabled = false },
-   KeySystem = false,
-   -- Define a barra de abas na ESQUERDA (Sidebar) em vez do topo
-   TabWidth = 160,
-   SubTitle = "THULLERX STORE",
+local Window = Fluent:CreateWindow({
+    Title = "THULLERX STORE",
+    SubTitle = "Blox Fruits Hub",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 400),
+    Acrylic = false,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.LeftControl
 })
 
--- Marca d'água no canto da tela
+-- Marca d'água fixa
 local ScreenGui = Instance.new("ScreenGui")
 local TextLabel = Instance.new("TextLabel")
 ScreenGui.Parent = game:GetService("CoreGui")
@@ -29,7 +28,7 @@ TextLabel.Text = "THULLERX STORE"
 TextLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
 TextLabel.TextSize = 18.0
 
--- Variáveis de Controle
+-- Variáveis Globais de Controle
 _G.AutoFarm = false
 _G.AutoChest = false
 _G.AutoSeaEvents = false
@@ -41,230 +40,209 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Prevenção Anti-AFK
-LocalPlayer.Idled:Connect(function()
-    local vu = game:GetService("VirtualUser")
-    vu:CaptureController()
-    vu:ClickButton2(Vector2.new(0,0))
-end)
-
--- Função Auxiliar de Ataque Solara
-local function AutoAttack()
-    local char = LocalPlayer.Character
-    if char then
-        if not char:FindFirstChildOfClass("Tool") then
-            local tool = LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
-            if tool then
-                char.Humanoid:EquipTool(tool)
+-- Sistema de Dano/Ataque direto do Blox Fruits
+local function DoFastAttack()
+    pcall(function()
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChildOfClass("Tool") then
+            -- Ativa a animação e aciona o Remote de combate
+            char:FindFirstChildOfClass("Tool"):Activate()
+            local combatRemote = ReplicatedStorage:FindFirstChild("RigControllerEvent", true) or ReplicatedStorage.Remotes:FindFirstChild("Validator")
+            if combatRemote then
+                combatRemote:FireServer("weapon")
             end
         end
-        local currentTool = char:FindFirstChildOfClass("Tool")
-        if currentTool and currentTool:FindFirstChild("Activate") then
-            currentTool:Activate()
-        end
-    end
+    end)
 end
 
 -- ======================================================================
--- ABAS / CATEGORIAS (SIDEBAR ESQUERDA)
+-- ABAS NO LADO ESQUERDO (SIDEBAR)
 -- ======================================================================
-local MainTab = Window:CreateTab("Auto Farm", 4483362458)
-local SeaTab = Window:CreateTab("Sea Events", 4483362458)
-local FruitTab = Window:CreateTab("Frutas", 4483362458)
-local BossTab = Window:CreateTab("Bosses & Raids", 4483362458)
-local ConfigTab = Window:CreateTab("Aparência", 4483362458)
+local Tabs = {
+    Main = Window:AddTab({ Title = "Auto Farm", Icon = "rbxassetid://4483362458" }),
+    Sea = Window:AddTab({ Title = "Sea Events", Icon = "rbxassetid://4483362458" }),
+    Fruit = Window:AddTab({ Title = "Frutas", Icon = "rbxassetid://4483362458" }),
+    Boss = Window:AddTab({ Title = "Bosses & Raids", Icon = "rbxassetid://4483362458" }),
+    Settings = Window:AddTab({ Title = "Aparência", Icon = "rbxassetid://4483362458" })
+}
 
 -- ======================================================================
 -- 1. AUTO FARM
 -- ======================================================================
-MainTab:CreateToggle({
-   Name = "Auto Farm Mobs Próximos",
-   CurrentValue = false,
-   Callback = function(Value)
-      _G.AutoFarm = Value
-   end,
+Tabs.Main:AddToggle("AutoFarmToggle", {
+    Title = "Auto Farm Mobs Próximos",
+    Default = false,
+    Callback = function(Value)
+        _G.AutoFarm = Value
+    end
 })
 
-MainTab:CreateToggle({
-   Name = "Auto Farm Baús (Chests)",
-   CurrentValue = false,
-   Callback = function(Value)
-      _G.AutoChest = Value
-   end,
+Tabs.Main:AddToggle("AutoChestToggle", {
+    Title = "Auto Coletar Baús",
+    Default = false,
+    Callback = function(Value)
+        _G.AutoChest = Value
+    end
 })
 
--- Loop Farm Mobs
+-- Loop de Farm e Teleporte
 task.spawn(function()
-   while true do
-      task.wait(0.1)
-      if _G.AutoFarm then
-         pcall(function()
-            local enemies = workspace:FindFirstChild("Enemies")
-            if enemies then
-               for _, enemy in pairs(enemies:GetChildren()) do
-                  if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 and enemy:FindFirstChild("HumanoidRootPart") then
-                     while _G.AutoFarm and enemy.Humanoid.Health > 0 do
-                        task.wait(0.05)
-                        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                           LocalPlayer.Character.HumanoidRootPart.CFrame = enemy.HumanoidRootPart.CFrame * CFrame.new(0, 8, 0)
-                           AutoAttack()
+    while true do
+        task.wait(0.05)
+        if _G.AutoFarm then
+            pcall(function()
+                local enemies = workspace:FindFirstChild("Enemies")
+                if enemies then
+                    for _, enemy in pairs(enemies:GetChildren()) do
+                        if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 and enemy:FindFirstChild("HumanoidRootPart") then
+                            while _G.AutoFarm and enemy.Humanoid.Health > 0 do
+                                task.wait(0.02)
+                                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                                    -- Trava o jogador acima do Mob
+                                    LocalPlayer.Character.HumanoidRootPart.CFrame = enemy.HumanoidRootPart.CFrame * CFrame.new(0, 7, 0)
+                                    DoFastAttack()
+                                end
+                            end
                         end
-                     end
-                  end
-               end
-            end
-         end)
-      end
-   end
+                    end
+                end
+            end)
+        end
+    end
 end)
 
--- Loop Baús
+-- Loop de Coleta de Baús
 task.spawn(function()
-   while true do
-      task.wait(0.5)
-      if _G.AutoChest then
-         pcall(function()
-            for _, obj in pairs(workspace:GetChildren()) do
-               if string.find(obj.Name, "Chest") and obj:IsA("BasePart") then
-                  if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                     LocalPlayer.Character.HumanoidRootPart.CFrame = obj.CFrame
-                     task.wait(0.3)
-                  end
-               end
-            end
-         end)
-      end
-   end
+    while true do
+        task.wait(0.3)
+        if _G.AutoChest then
+            pcall(function()
+                for _, obj in pairs(workspace:GetChildren()) do
+                    if string.find(obj.Name, "Chest") and obj:IsA("BasePart") then
+                        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                            LocalPlayer.Character.HumanoidRootPart.CFrame = obj.CFrame
+                            task.wait(0.2)
+                        end
+                    end
+                end
+            end)
+        end
+    end
 end)
 
 -- ======================================================================
 -- 2. SEA EVENTS
 -- ======================================================================
-SeaTab:CreateToggle({
-   Name = "Auto Sea Events (Sea Beasts & Terror Sharks)",
-   CurrentValue = false,
-   Callback = function(Value)
-      _G.AutoSeaEvents = Value
-   end,
+Tabs.Sea:AddToggle("AutoSeaToggle", {
+    Title = "Auto Sea Beasts & Terror Sharks",
+    Default = false,
+    Callback = function(Value)
+        _G.AutoSeaEvents = Value
+    end
 })
 
 task.spawn(function()
-   while true do
-      task.wait(0.2)
-      if _G.AutoSeaEvents then
-         pcall(function()
-            local seaBeasts = workspace:FindFirstChild("SeaBeasts")
-            if seaBeasts then
-               for _, beast in pairs(seaBeasts:GetChildren()) do
-                  if beast:FindFirstChild("Humanoid") and beast.Humanoid.Health > 0 then
-                     if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                        LocalPlayer.Character.HumanoidRootPart.CFrame = beast.HumanoidRootPart.CFrame * CFrame.new(0, 60, 0)
-                        AutoAttack()
-                     end
-                  end
-               end
-            end
-         end)
-      end
-   end
+    while true do
+        task.wait(0.1)
+        if _G.AutoSeaEvents then
+            pcall(function()
+                local seaBeasts = workspace:FindFirstChild("SeaBeasts")
+                if seaBeasts then
+                    for _, beast in pairs(seaBeasts:GetChildren()) do
+                        if beast:FindFirstChild("Humanoid") and beast.Humanoid.Health > 0 then
+                            if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                                LocalPlayer.Character.HumanoidRootPart.CFrame = beast.HumanoidRootPart.CFrame * CFrame.new(0, 50, 0)
+                                DoFastAttack()
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+    end
 end)
 
 -- ======================================================================
 -- 3. FRUTAS
 -- ======================================================================
-FruitTab:CreateToggle({
-   Name = "Auto Girar Fruta (Random Fruit)",
-   CurrentValue = false,
-   Callback = function(Value)
-      _G.AutoSpinFruit = Value
-   end,
-})
-
-FruitTab:CreateToggle({
-   Name = "Auto Guardar Fruta no Inventário",
-   CurrentValue = false,
-   Callback = function(Value)
-      _G.AutoStoreFruit = Value
-   end,
-})
-
-FruitTab:CreateToggle({
-   Name = "Auto Coletar Fruta do Chão",
-   CurrentValue = false,
-   Callback = function(Value)
-      _G.AutoFruitFinder = Value
-   end,
-})
-
-task.spawn(function()
-   while true do
-      task.wait(2)
-      if _G.AutoSpinFruit then
-         pcall(function()
-            ReplicatedStorage.Remotes.CommF_:InvokeServer("Cousin", "Buy")
-         end)
-      end
-   end
-end)
-
-task.spawn(function()
-   while true do
-      task.wait(1)
-      if _G.AutoStoreFruit then
-         pcall(function()
-            for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
-               if string.find(tool.Name, "Fruit") then
-                  ReplicatedStorage.Remotes.CommF_:InvokeServer("StoreFruit", tool.Name, tool)
-               end
-            end
-         end)
-      end
-   end
-end)
-
-task.spawn(function()
-   while true do
-      task.wait(1)
-      if _G.AutoFruitFinder then
-         pcall(function()
-            for _, obj in pairs(workspace:GetChildren()) do
-               if string.find(obj.Name, "Fruit") then
-                  local handle = obj:FindFirstChild("Handle") or obj:FindFirstChildOfClass("Part")
-                  if handle and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                     LocalPlayer.Character.HumanoidRootPart.CFrame = handle.CFrame
-                  end
-               end
-            end
-         end)
-      end
-   end
-end)
-
--- ======================================================================
--- 4. BOSSES & RAIDS
--- ======================================================================
-BossTab:CreateDropdown({
-   Name = "Selecionar Boss",
-   Options = {"Boss 1", "Boss 2", "Doflamingo", "Rip Indra"},
-   CurrentOption = {"Boss 1"},
-   Callback = function(Option)
-      print("Boss selecionado: " .. Option[1])
-   end,
-})
-
--- ======================================================================
--- 5. PERSONALIZAÇÃO DE COR
--- ======================================================================
-ConfigTab:CreateColorPicker({
-    Name = "Cor do Texto 'THULLERX STORE'",
-    Color = Color3.fromRGB(255, 50, 50),
+Tabs.Fruit:AddToggle("AutoSpinToggle", {
+    Title = "Auto Girar Fruta",
+    Default = false,
     Callback = function(Value)
-        TextLabel.TextColor3 = Value
+        _G.AutoSpinFruit = Value
     end
 })
 
-Rayfield:Notify({
-   Title = "THULLERX STORE",
-   Content = "Carregado com sucesso sem erros!",
-   Duration = 3,
+Tabs.Fruit:AddToggle("AutoStoreToggle", {
+    Title = "Auto Guardar Frutas",
+    Default = false,
+    Callback = function(Value)
+        _G.AutoStoreFruit = Value
+    end
 })
+
+Tabs.Fruit:AddToggle("AutoFindToggle", {
+    Title = "Auto Coletar Frutas do Chão",
+    Default = false,
+    Callback = function(Value)
+        _G.AutoFruitFinder = Value
+    end
+})
+
+task.spawn(function()
+    while true do
+        task.wait(2)
+        if _G.AutoSpinFruit then
+            pcall(function()
+                ReplicatedStorage.Remotes.CommF_:InvokeServer("Cousin", "Buy")
+            end)
+        end
+    end
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if _G.AutoStoreFruit then
+            pcall(function()
+                for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
+                    if string.find(tool.Name, "Fruit") then
+                        ReplicatedStorage.Remotes.CommF_:InvokeServer("StoreFruit", tool.Name, tool)
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+task.spawn(function()
+    while true do
+        task.wait(1)
+        if _G.AutoFruitFinder then
+            pcall(function()
+                for _, obj in pairs(workspace:GetChildren()) do
+                    if string.find(obj.Name, "Fruit") then
+                        local handle = obj:FindFirstChild("Handle") or obj:FindFirstChildOfClass("Part")
+                        if handle and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                            LocalPlayer.Character.HumanoidRootPart.CFrame = handle.CFrame
+                        end
+                    end
+                end
+            end)
+        end
+    end
+end)
+
+-- ======================================================================
+-- 4. APARÊNCIA & COLOR PICKER
+-- ======================================================================
+local ColorPicker = Tabs.Settings:AddColorpicker("ColorPicker", {
+    Title = "Cor da Marca d'Água",
+    Default = Color3.fromRGB(255, 50, 50)
+})
+
+ColorPicker:OnChanged(function()
+    TextLabel.TextColor3 = ColorPicker.Value
+end)
+
+Window:SelectTab(1)
