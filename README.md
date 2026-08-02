@@ -1,20 +1,20 @@
 -- ======================================================================
--- THULLERX STORE - HUB OFICIAL BLOX FRUITS (V4 PROFESSIONAL)
+-- THULLERX STORE - HUB OFICIAL BLOX FRUITS (AUTO QUEST & CUSTOM UI V5)
 -- ======================================================================
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
 local Window = Fluent:CreateWindow({
     Title = "THULLERX STORE",
-    SubTitle = "Blox Fruits Premium Hub",
+    SubTitle = "Blox Fruits Quest Hub",
     TabWidth = 160,
-    Size = UDim2.fromOffset(620, 440),
+    Size = UDim2.fromOffset(630, 460),
     Acrylic = true,
     Theme = "Darker",
     MinimizeKey = Enum.KeyCode.K
 })
 
--- Marca d'água Profissional com Status
+-- Marca d'água Customizável
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local TextLabel = Instance.new("TextLabel")
@@ -23,11 +23,11 @@ local StatusLabel = Instance.new("TextLabel")
 ScreenGui.Parent = game:GetService("CoreGui")
 
 MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 MainFrame.BorderColor3 = Color3.fromRGB(255, 50, 50)
-MainFrame.BorderSizePixel = 1
+MainFrame.BorderSizePixel = 2
 MainFrame.Position = UDim2.new(0.01, 0, 0.02, 0)
-MainFrame.Size = UDim2.new(0, 200, 0, 45)
+MainFrame.Size = UDim2.new(0, 210, 0, 50)
 
 TextLabel.Parent = MainFrame
 TextLabel.BackgroundTransparency = 1
@@ -36,20 +36,20 @@ TextLabel.Size = UDim2.new(0, 190, 0, 20)
 TextLabel.Font = Enum.Font.SourceSansBold
 TextLabel.Text = "THULLERX STORE"
 TextLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-TextLabel.TextSize = 16.0
+TextLabel.TextSize = 17.0
 TextLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 StatusLabel.Parent = MainFrame
 StatusLabel.BackgroundTransparency = 1
 StatusLabel.Position = UDim2.new(0.05, 0, 0.55, 0)
-StatusLabel.Size = UDim2.new(0, 190, 0, 15)
+StatusLabel.Size = UDim2.new(0, 190, 0, 18)
 StatusLabel.Font = Enum.Font.SourceSansItalic
-StatusLabel.Text = "Teclar [K] para Ocultar Menu"
-StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-StatusLabel.TextSize = 12.0
+StatusLabel.Text = "Teclar [K] para Ocultar"
+StatusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+StatusLabel.TextSize = 13.0
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 
--- Variáveis de Estado
+-- Variáveis Globais
 _G.AutoFarmLevel = false
 _G.AutoChest = false
 _G.AutoSpinFruit = false
@@ -62,23 +62,23 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Tabela Mapeada de Ilhas/Mobs
+-- TABELA DE QUESTS REAL DO BLOX FRUITS (First Sea)
 local LevelData = {
-    {MinLevel = 1,   MaxLevel = 14,  MobName = "Bandit",          Position = CFrame.new(1059, 16, 1548)},
-    {MinLevel = 15,  MaxLevel = 29,  MobName = "Monkey",          Position = CFrame.new(-1610, 37, 147)},
-    {MinLevel = 30,  MaxLevel = 59,  MobName = "Pirate",          Position = CFrame.new(-1141, 4, 3856)},
-    {MinLevel = 60,  MaxLevel = 89,  MobName = "Desert Bandit",   Position = CFrame.new(897, 6, 4388)},
-    {MinLevel = 90,  MaxLevel = 119, MobName = "Snow Bandit",     Position = CFrame.new(1353, 87, -1328)},
-    {MinLevel = 120, MaxLevel = 149, MobName = "Chief Petty Officer", Position = CFrame.new(-5036, 20, 4324)},
-    {MinLevel = 150, MaxLevel = 189, MobName = "Sky Bandit",      Position = CFrame.new(-4839, 717, -2620)},
-    {MinLevel = 190, MaxLevel = 249, MobName = "Prisoner",        Position = CFrame.new(485, 4, 735)},
-    {MinLevel = 250, MaxLevel = 299, MobName = "Toga Warrior",    Position = CFrame.new(-1820, 7, -2745)},
-    {MinLevel = 300, MaxLevel = 374, MobName = "Military Soldier", Position = CFrame.new(-5315, 8, 8515)},
-    {MinLevel = 375, MaxLevel = 449, MobName = "Fishman Warrior", Position = CFrame.new(61122, 18, 1569)},
-    {MinLevel = 450, MaxLevel = 699, MobName = "God's Guard",     Position = CFrame.new(-4720, 845, -1950)}
+    {Min = 1,   Max = 9,   Quest = "BanditQuest1",       ID = 1, Mob = "Bandit",          QuestPos = CFrame.new(1059, 16, 1548)},
+    {Min = 10,  Max = 29,  Quest = "JungleQuest",        ID = 1, Mob = "Monkey",          QuestPos = CFrame.new(-1598, 36, 153)},
+    {Min = 30,  Max = 59,  Quest = "BuggyQuest1",        ID = 1, Mob = "Pirate",          QuestPos = CFrame.new(-1141, 4, 3856)},
+    {Min = 60,  Max = 89,  Quest = "DesertQuest",        ID = 1, Mob = "Desert Bandit",   QuestPos = CFrame.new(897, 6, 4388)},
+    {Min = 90,  Max = 119, Quest = "SnowQuest",          ID = 1, Mob = "Snow Bandit",     QuestPos = CFrame.new(1385, 87, -1298)},
+    {Min = 120, Max = 149, Quest = "MarineQuest2",       ID = 1, Mob = "Chief Petty Officer", QuestPos = CFrame.new(-5036, 20, 4324)},
+    {Min = 150, Max = 189, Quest = "SkyQuest",           ID = 1, Mob = "Sky Bandit",      QuestPos = CFrame.new(-4839, 717, -2620)},
+    {Min = 190, Max = 249, Quest = "PrisonerQuest",      ID = 1, Mob = "Prisoner",        QuestPos = CFrame.new(485, 4, 735)},
+    {Min = 250, Max = 299, Quest = "ColosseumQuest",     ID = 1, Mob = "Toga Warrior",    QuestPos = CFrame.new(-1820, 7, -2745)},
+    {Min = 300, Max = 374, Quest = "MagmaQuest",         ID = 1, Mob = "Military Soldier", QuestPos = CFrame.new(-5315, 8, 8515)},
+    {Min = 375, Max = 449, Quest = "FishmanQuest",       ID = 1, Mob = "Fishman Warrior", QuestPos = CFrame.new(61122, 18, 1569)},
+    {Min = 450, Max = 699, Quest = "SkyQuest2",          ID = 1, Mob = "God's Guard",     QuestPos = CFrame.new(-4720, 845, -1950)}
 }
 
--- Função para Parar Movimento Imediatamente
+-- Parar Movimento
 local function StopMovement()
     if _G.CurrentTween then
         _G.CurrentTween:Cancel()
@@ -86,7 +86,7 @@ local function StopMovement()
     end
 end
 
--- Função de Voo/Tween Seguro
+-- Voo Suave (Tween)
 local function TweenTo(targetCFrame)
     local character = LocalPlayer.Character
     if character and character:FindFirstChild("HumanoidRootPart") then
@@ -95,7 +95,6 @@ local function TweenTo(targetCFrame)
         local duration = distance / _G.TweenSpeed
         
         StopMovement()
-        
         local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
         _G.CurrentTween = TweenService:Create(hrp, tweenInfo, {CFrame = targetCFrame})
         _G.CurrentTween:Play()
@@ -103,7 +102,7 @@ local function TweenTo(targetCFrame)
     end
 end
 
--- Leitura de Nível
+-- Pegar Nível
 local function GetPlayerLevel()
     pcall(function()
         if LocalPlayer:FindFirstChild("Data") and LocalPlayer.Data:FindFirstChild("Level") then
@@ -113,15 +112,29 @@ local function GetPlayerLevel()
     return 1
 end
 
--- Busca Mob/Ilha
-local function GetCurrentTarget()
-    local level = GetPlayerLevel()
-    for _, info in ipairs(LevelData) do
-        if level >= info.MinLevel and level <= info.MaxLevel then
-            return info
+-- Pegar Dados da Quest
+local function GetQuestData()
+    local lvl = GetPlayerLevel()
+    for _, data in ipairs(LevelData) do
+        if lvl >= data.Min and lvl <= data.Max then
+            return data
         end
     end
     return LevelData[#LevelData]
+end
+
+-- Verificar se já está com quest
+local function HasQuest()
+    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if playerGui and playerGui:FindFirstChild("Main") and playerGui.Main:FindFirstChild("Quest") then
+        return playerGui.Main.Quest.Visible
+    end
+    return false
+end
+
+-- Pegar Quest no Server
+local function AcceptQuest(data)
+    ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest", data.Quest, data.ID)
 end
 
 -- Ataque
@@ -141,29 +154,27 @@ local function DoAttack()
 end
 
 -- ======================================================================
--- ABAS LATERAIS
+-- ABAS DA INTERFACE
 -- ======================================================================
 local Tabs = {
     Main = Window:AddTab({ Title = "Auto Farm", Icon = "sword" }),
     Chest = Window:AddTab({ Title = "Baús", Icon = "box" }),
     Movement = Window:AddTab({ Title = "Movimento", Icon = "move" }),
     Fruit = Window:AddTab({ Title = "Frutas", Icon = "apple" }),
-    Settings = Window:AddTab({ Title = "Personalizar", Icon = "settings" })
+    Settings = Window:AddTab({ Title = "Aparência & Temas", Icon = "settings" })
 }
 
 -- ======================================================================
--- 1. AUTO FARM LEVEL
+-- 1. AUTO FARM LEVEL & QUEST
 -- ======================================================================
-Tabs.Main:AddSection("Farm de Nível Automático")
+Tabs.Main:AddSection("Farm de Nível + Auto Quest")
 
 Tabs.Main:AddToggle("AutoFarmLevelToggle", {
-    Title = "Ativar Auto Farm Level",
+    Title = "Ativar Auto Level (Com Quests)",
     Default = false,
     Callback = function(Value)
         _G.AutoFarmLevel = Value
-        if not Value then
-            StopMovement()
-        end
+        if not Value then StopMovement() end
     end
 })
 
@@ -172,30 +183,39 @@ task.spawn(function()
         task.wait(0.1)
         if _G.AutoFarmLevel then
             pcall(function()
-                local targetInfo = GetCurrentTarget()
-                local enemies = workspace:FindFirstChild("Enemies")
-                local targetEnemy = nil
+                local qData = GetQuestData()
+                
+                -- Se NÃO tem quest ativa, voa pro NPC da Quest e pega a missão
+                if not HasQuest() then
+                    local tween = TweenTo(qData.QuestPos * CFrame.new(0, 3, 0))
+                    if tween then tween.Completed:Wait() end
+                    task.wait(0.3)
+                    AcceptQuest(qData)
+                    task.wait(0.5)
+                else
+                    -- Já tem quest: Procura o Mob da missão no Workspace
+                    local enemies = workspace:FindFirstChild("Enemies")
+                    local targetEnemy = nil
 
-                if enemies then
-                    for _, enemy in pairs(enemies:GetChildren()) do
-                        if enemy.Name == targetInfo.MobName and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 and enemy:FindFirstChild("HumanoidRootPart") then
-                            targetEnemy = enemy
-                            break
+                    if enemies then
+                        for _, enemy in pairs(enemies:GetChildren()) do
+                            if enemy.Name == qData.Mob and enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 and enemy:FindFirstChild("HumanoidRootPart") then
+                                targetEnemy = enemy
+                                break
+                            end
                         end
                     end
-                end
 
-                if targetEnemy then
-                    while _G.AutoFarmLevel and targetEnemy and targetEnemy:FindFirstChild("Humanoid") and targetEnemy.Humanoid.Health > 0 do
-                        task.wait(0.05)
-                        local mobPos = targetEnemy.HumanoidRootPart.CFrame * CFrame.new(0, 6, 0)
-                        local tween = TweenTo(mobPos)
-                        if tween then tween.Completed:Wait() end
-                        DoAttack()
+                    -- Se encontrou o mob, vai até ele e ataca
+                    if targetEnemy then
+                        while _G.AutoFarmLevel and HasQuest() and targetEnemy and targetEnemy:FindFirstChild("Humanoid") and targetEnemy.Humanoid.Health > 0 do
+                            task.wait(0.05)
+                            local mobPos = targetEnemy.HumanoidRootPart.CFrame * CFrame.new(0, 7, 0)
+                            local tween = TweenTo(mobPos)
+                            if tween then tween.Completed:Wait() end
+                            DoAttack()
+                        end
                     end
-                else
-                    local islandTween = TweenTo(targetInfo.Position * CFrame.new(0, 15, 0))
-                    if islandTween then islandTween.Completed:Wait() end
                 end
             end)
         end
@@ -205,20 +225,17 @@ end)
 -- ======================================================================
 -- 2. AUTO CHEST
 -- ======================================================================
-Tabs.Chest:AddSection("Coleta de Baús")
+Tabs.Chest:AddSection("Coleta Automática de Baús")
 
 Tabs.Chest:AddToggle("AutoChestToggle", {
     Title = "Ativar Auto Farm Baús",
     Default = false,
     Callback = function(Value)
         _G.AutoChest = Value
-        if not Value then
-            StopMovement()
-        end
+        if not Value then StopMovement() end
     end
 })
 
--- Loop de Baús com Varredura Profunda no Workspace
 task.spawn(function()
     while true do
         task.wait(0.5)
@@ -247,11 +264,11 @@ end)
 -- ======================================================================
 -- 3. MOVIMENTAÇÃO
 -- ======================================================================
-Tabs.Movement:AddSection("Ajuste de Velocidade")
+Tabs.Movement:AddSection("Velocidade do Voo")
 
 Tabs.Movement:AddSlider("SpeedSlider", {
-    Title = "Velocidade do Voo",
-    Description = "Altere a velocidade de deslocamento",
+    Title = "Velocidade (Tween Speed)",
+    Description = "Ajuste a velocidade entre 50 e 350",
     Default = 250,
     Min = 50,
     Max = 350,
@@ -264,8 +281,7 @@ Tabs.Movement:AddSlider("SpeedSlider", {
 -- ======================================================================
 -- 4. FRUTAS
 -- ======================================================================
-Tabs.Fruit:AddSection("Gerenciamento de Frutas")
-
+Tabs.Fruit:AddSection("Ações de Frutas")
 Tabs.Fruit:AddToggle("AutoSpinToggle", { Title = "Auto Girar Fruta", Default = false, Callback = function(V) _G.AutoSpinFruit = V end })
 Tabs.Fruit:AddToggle("AutoStoreToggle", { Title = "Auto Guardar Frutas", Default = false, Callback = function(V) _G.AutoStoreFruit = V end })
 
@@ -294,12 +310,34 @@ task.spawn(function()
 end)
 
 -- ======================================================================
--- 5. APARÊNCIA
+-- 5. PERSONALIZAÇÃO & APARÊNCIA AVANÇADA
 -- ======================================================================
-Tabs.Settings:AddSection("Cores e Estilo")
+Tabs.Settings:AddSection("Temas e Cores do Menu")
 
-local ColorPicker = Tabs.Settings:AddColorpicker("ColorPicker", {
-    Title = "Cor da Marca d'Água",
+-- Troca de Temas da Interface Fluent
+Tabs.Settings:AddDropdown("ThemeDropdown", {
+    Title = "Tema da Interface",
+    Values = {"Darker", "Dark", "Midnight", "Aqua", "Amethyst", "Rose"},
+    Default = "Darker",
+    Callback = function(Value)
+        Fluent:SetTheme(Value)
+    end
+})
+
+-- Efeito Transparência / Blur (Acrylic)
+Tabs.Settings:AddToggle("AcrylicToggle", {
+    Title = "Efeito Transparência (Acrylic)",
+    Default = true,
+    Callback = function(Value)
+        Window:SetAcrylic(Value)
+    end
+})
+
+Tabs.Settings:AddSection("Marca d'Água (THULLERX STORE)")
+
+-- Color Picker da Marca D'água
+local ColorPicker = Tabs.Settings:AddColorpicker("WatermarkColor", {
+    Title = "Cor da Marca d'Água & Borda",
     Default = Color3.fromRGB(255, 50, 50)
 })
 
@@ -307,5 +345,14 @@ ColorPicker:OnChanged(function()
     TextLabel.TextColor3 = ColorPicker.Value
     MainFrame.BorderColor3 = ColorPicker.Value
 end)
+
+-- Mostrar / Esconder a Marca d'Água
+Tabs.Settings:AddToggle("ShowWatermark", {
+    Title = "Exibir Caixa THULLERX STORE na Tela",
+    Default = true,
+    Callback = function(Value)
+        MainFrame.Visible = Value
+    end
+})
 
 Window:SelectTab(1)
