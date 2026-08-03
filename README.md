@@ -1,5 +1,6 @@
 -- ======================================================================
 -- THULLERX STORE - HUB OFICIAL (AUTO FARM + AUTO QUEST + AUTO CHEST)
+-- VERSÃO CORRIGIDA: Auto Quest (máquina de estados) + Auto Chest (sem travar)
 -- ======================================================================
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -61,6 +62,14 @@ _G.TweenSpeed = 250
 _G.FarmHeight = 2
 _G.CurrentTween = nil
 
+-- NOVO: estado da máquina de Auto Quest
+_G.QuestState = "IDLE" -- IDLE, GOTO_NPC, REQUEST, CONFIRM, HUNT
+_G.QuestRetryCount = 0
+_G.QuestRetryTime = 0
+
+-- NOVO: alvo atual do Auto Chest
+_G.ChestTarget = nil
+
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
@@ -74,11 +83,11 @@ local CommF_ = Remotes:FindFirstChild("CommF_") or Remotes:FindFirstChild("CommF
 
 -- LISTA DE CÓDIGOS DE EXP
 local PromoCodes = {
-    "EASTEREXP", "fudd10", "fudd10_V2", "Chandler", "BIGNEWS", 
-    "KITT_RESET", "Sub2UncleKizaru", "SUB2GAMERROBOT_RESET1", 
-    "Sub2Fer999", "Enyu_is_Pro", "JCWK", "StarcodeHEO", "MagicBUS", 
-    "KittGaming", "Sub2CaptainMaui", "Sub2OfficialNoobie", "TheGreatAce", 
-    "Sub2NoobMaster123", "Sub2Daigrock", "Axiore", "StrawHatMaine", 
+    "EASTEREXP", "fudd10", "fudd10_V2", "Chandler", "BIGNEWS",
+    "KITT_RESET", "Sub2UncleKizaru", "SUB2GAMERROBOT_RESET1",
+    "Sub2Fer999", "Enyu_is_Pro", "JCWK", "StarcodeHEO", "MagicBUS",
+    "KittGaming", "Sub2CaptainMaui", "Sub2OfficialNoobie", "TheGreatAce",
+    "Sub2NoobMaster123", "Sub2Daigrock", "Axiore", "StrawHatMaine",
     "TantaiGaming", "Bluxxy", "SUB2GAMERROBOT_EXP1"
 }
 
@@ -150,6 +159,21 @@ local function GetCurrentQuestTitle()
     return ""
 end
 
+-- NOVO: fecha qualquer caixa de diálogo aberta (ex: "Por favor selecione uma missão")
+local function CloseAnyDialogue()
+    local closed = false
+    pcall(function()
+        local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+        if pGui and pGui:FindFirstChild("Main") and pGui.Main:FindFirstChild("Dialogue") and pGui.Main.Dialogue.Visible then
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+            task.wait(0.05)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+            closed = true
+        end
+    end)
+    return closed
+end
+
 local function StopMovement()
     if _G.CurrentTween then
         _G.CurrentTween:Cancel()
@@ -160,7 +184,7 @@ end
 local function TweenTo(targetCFrame)
     local char = LocalPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    
+
     local hrp = char.HumanoidRootPart
     local dist = (hrp.Position - targetCFrame.Position).Magnitude
     local time = dist / _G.TweenSpeed
@@ -174,7 +198,7 @@ local function DoRealAutoClick()
     pcall(function()
         local char = LocalPlayer.Character
         if not char or not char:FindFirstChild("Humanoid") then return end
-        
+
         local currentTool = char:FindFirstChildOfClass("Tool")
         if not currentTool then
             for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
@@ -185,7 +209,7 @@ local function DoRealAutoClick()
                 end
             end
         end
-        
+
         if currentTool then currentTool:Activate() end
 
         local viewportSize = workspace.CurrentCamera.ViewportSize
@@ -210,7 +234,10 @@ Tabs.Main:AddToggle("AutoFarmLevelToggle", {
     Default = false,
     Callback = function(Value)
         _G.AutoFarmLevel = Value
-        if not Value then StopMovement() end
+        if not Value then
+            StopMovement()
+            _G.QuestState = "IDLE"
+        end
     end
 })
 
@@ -242,13 +269,16 @@ Tabs.Main:AddButton({
 
 -- 2. AUTO CHEST
 Tabs.Chest:AddSection("Coleta Automática de Baús")
-Tabs.Chest:AddToggle("AutoChestToggle", { 
-    Title = "Ativar Auto Farm Baús", 
-    Default = false, 
-    Callback = function(V) 
-        _G.AutoChest = V 
-        if not V then StopMovement() end
-    end 
+Tabs.Chest:AddToggle("AutoChestToggle", {
+    Title = "Ativar Auto Farm Baús",
+    Default = false,
+    Callback = function(V)
+        _G.AutoChest = V
+        if not V then
+            StopMovement()
+            _G.ChestTarget = nil
+        end
+    end
 })
 
 -- 3. MOVIMENTO
@@ -292,7 +322,7 @@ local function GetTargetEnemy(mobName)
     local shortestDistance = math.huge
     local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return nil end
-    
+
     local enemies = workspace:FindFirstChild("Enemies") or workspace
     for _, enemy in pairs(enemies:GetChildren()) do
         if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 and enemy:FindFirstChild("HumanoidRootPart") then
@@ -308,59 +338,91 @@ local function GetTargetEnemy(mobName)
     return closest
 end
 
--- LOOP AUTO FARM / AUTO QUEST CORRIGIDO
+-- ======================================================================
+-- LOOP AUTO FARM / AUTO QUEST (CORRIGIDO COM MÁQUINA DE ESTADOS)
+-- Estados: GOTO_NPC -> REQUEST -> CONFIRM -> HUNT
+-- Isso evita o travamento no diálogo e o loop infinito de teleporte.
+-- ======================================================================
 local currentTarget = nil
 task.spawn(function()
     while true do
-        task.wait(0.05)
+        task.wait(0.1)
         if _G.AutoFarmLevel then
             pcall(function()
                 local qData = GetQuestData()
                 local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                 if not hrp then return end
 
-                -- Fechar menu de diálogo se estiver aberto na tela
-                local pGui = LocalPlayer:FindFirstChild("PlayerGui")
-                if pGui and pGui:FindFirstChild("Main") and pGui.Main:FindFirstChild("Dialogue") and pGui.Main.Dialogue.Visible then
-                    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
-                    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
-                end
+                -- Sempre tenta fechar qualquer diálogo travado na tela primeiro
+                CloseAnyDialogue()
 
-                -- Se tiver quest errada, abandona
+                -- Se a quest ativa não é a esperada para o nível atual, abandona e reinicia o fluxo
                 if HasQuest() and not string.find(string.lower(GetCurrentQuestTitle()), string.lower(qData.Mob)) then
-                    if CommF_ then CommF_:InvokeServer("AbandonQuest") end
+                    if CommF_ then pcall(function() CommF_:InvokeServer("AbandonQuest") end) end
+                    currentTarget = nil
+                    _G.QuestState = "GOTO_NPC"
+                    task.wait(0.3)
+                    return
                 end
 
-                -- Se não tiver quest, vai até o NPC certo e aceita
-                if not HasQuest() then
+                -- Se já tem a quest certa ativa, pula direto pra caçada
+                if HasQuest() then
+                    _G.QuestState = "HUNT"
+                elseif _G.QuestState ~= "REQUEST" and _G.QuestState ~= "CONFIRM" then
+                    _G.QuestState = "GOTO_NPC"
+                end
+
+                if _G.QuestState == "GOTO_NPC" then
                     local distToNPC = (hrp.Position - qData.QuestPos.Position).Magnitude
                     if distToNPC > 12 then
                         TweenTo(qData.QuestPos)
                     else
                         StopMovement()
-                        if CommF_ then
-                            CommF_:InvokeServer("StartQuest", qData.Quest, qData.ID)
-                        end
-                        task.wait(0.5)
+                        _G.QuestState = "REQUEST"
                     end
-                    return
-                end
 
-                -- Se já tem a quest correta, busca o mob e ataca
-                if not currentTarget or not currentTarget:FindFirstChild("Humanoid") or currentTarget.Humanoid.Health <= 0 then
-                    currentTarget = GetTargetEnemy(qData.Mob)
-                end
+                elseif _G.QuestState == "REQUEST" then
+                    StopMovement()
+                    CloseAnyDialogue()
+                    if CommF_ then
+                        pcall(function() CommF_:InvokeServer("StartQuest", qData.Quest, qData.ID) end)
+                    end
+                    _G.QuestRetryCount = 0
+                    _G.QuestRetryTime = tick()
+                    _G.QuestState = "CONFIRM"
 
-                if currentTarget and currentTarget:FindFirstChild("HumanoidRootPart") then
-                    local targetCFrame = currentTarget.HumanoidRootPart.CFrame * CFrame.new(0, _G.FarmHeight, 0)
-                    local dist = (hrp.Position - currentTarget.HumanoidRootPart.Position).Magnitude
-                    
-                    if dist > 15 then
-                        TweenTo(targetCFrame)
-                    else
-                        StopMovement()
-                        hrp.CFrame = targetCFrame
-                        DoRealAutoClick()
+                elseif _G.QuestState == "CONFIRM" then
+                    -- Dá tempo do servidor confirmar e fecha qualquer diálogo residual
+                    CloseAnyDialogue()
+                    if HasQuest() and string.find(string.lower(GetCurrentQuestTitle()), string.lower(qData.Mob)) then
+                        _G.QuestState = "HUNT"
+                    elseif tick() - _G.QuestRetryTime > 1.5 then
+                        _G.QuestRetryCount = _G.QuestRetryCount + 1
+                        if _G.QuestRetryCount >= 5 then
+                            -- Depois de várias falhas, volta pro NPC e recomeça do zero
+                            _G.QuestState = "GOTO_NPC"
+                            _G.QuestRetryCount = 0
+                        else
+                            _G.QuestState = "REQUEST"
+                        end
+                    end
+
+                elseif _G.QuestState == "HUNT" then
+                    if not currentTarget or not currentTarget:FindFirstChild("Humanoid") or currentTarget.Humanoid.Health <= 0 then
+                        currentTarget = GetTargetEnemy(qData.Mob)
+                    end
+
+                    if currentTarget and currentTarget:FindFirstChild("HumanoidRootPart") then
+                        local targetCFrame = currentTarget.HumanoidRootPart.CFrame * CFrame.new(0, _G.FarmHeight, 0)
+                        local dist = (hrp.Position - currentTarget.HumanoidRootPart.Position).Magnitude
+
+                        if dist > 15 then
+                            TweenTo(targetCFrame)
+                        else
+                            StopMovement()
+                            hrp.CFrame = targetCFrame
+                            DoRealAutoClick()
+                        end
                     end
                 end
             end)
@@ -370,8 +432,14 @@ task.spawn(function()
     end
 end)
 
--- LOOP DEDICADO AUTO CHEST (SOMENTE BAÚS SPAWNADOS E ATIVOS)
+-- ======================================================================
+-- LOOP AUTO CHEST (CORRIGIDO - SEM WHILE BLOQUEANTE, SEM MISMATCH DE CHAVE)
+-- Agora usa a mesma "part" tanto pra procurar quanto pra marcar como coletado,
+-- e reseta a lista periodicamente pra permitir re-coleta de baús que respawnam.
+-- ======================================================================
 local CollectedChests = {}
+local ChestResetTime = tick()
+
 task.spawn(function()
     while true do
         task.wait(0.1)
@@ -379,44 +447,60 @@ task.spawn(function()
             pcall(function()
                 local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                 if not hrp then return end
-                
-                local targetChest = nil
-                local shortestDist = math.huge
-                
-                -- Procura no workspace apenas por baús reais e visíveis
-                for _, obj in pairs(workspace:GetDescendants()) do
-                    if string.find(string.lower(obj.Name), "chest") and not CollectedChests[obj] then
-                        local part = obj:IsA("BasePart") and obj or obj:FindFirstChildOfClass("BasePart")
-                        -- Verifica se o baú está realmente no jogo (visível e não transparente)
-                        if part and part.Transparency < 1 and part.Parent then
-                            local dist = (hrp.Position - part.Position).Magnitude
-                            if dist < shortestDist then
-                                shortestDist = dist
-                                targetChest = part
+
+                -- Reset periódico: baús podem respawnar, então libera a lista de vez em quando
+                if tick() - ChestResetTime > 30 then
+                    CollectedChests = {}
+                    ChestResetTime = tick()
+                end
+
+                -- Valida se o alvo atual ainda existe e está ativo
+                if _G.ChestTarget then
+                    local part = _G.ChestTarget
+                    if not part.Parent or CollectedChests[part] or part.Transparency >= 1 then
+                        _G.ChestTarget = nil
+                    end
+                end
+
+                -- Sem alvo? procura o baú ativo e visível mais próximo
+                if not _G.ChestTarget then
+                    local shortestDist = math.huge
+                    local found = nil
+
+                    for _, obj in pairs(workspace:GetDescendants()) do
+                        if string.find(string.lower(obj.Name), "chest") then
+                            local part = obj:IsA("BasePart") and obj or obj:FindFirstChildOfClass("BasePart")
+                            -- Baú "ativo": visível e ainda colidível (baú já coletado costuma perder CanCollide)
+                            if part and not CollectedChests[part] and part.Transparency < 1 and part.CanCollide then
+                                local dist = (hrp.Position - part.Position).Magnitude
+                                if dist < shortestDist then
+                                    shortestDist = dist
+                                    found = part
+                                end
                             end
                         end
                     end
-                end
-                
-                if targetChest then
-                    TweenTo(targetChest.CFrame * CFrame.new(0, 2, 0))
-                    local startWait = tick()
-                    
-                    -- Aguarda o player encostar no baú
-                    while _G.AutoChest and targetChest and targetChest.Parent and (hrp.Position - targetChest.Position).Magnitude > 4 do
-                        task.wait(0.05)
-                        if tick() - startWait > 5 then break end -- Timeout de segurança
+
+                    _G.ChestTarget = found
+                    if found then
+                        TweenTo(found.CFrame * CFrame.new(0, 2, 0))
                     end
-                    
-                    -- Marca o baú como coletado para pular para o próximo imediatamente
-                    CollectedChests[targetChest] = true
-                    task.wait(0.2)
-                else
-                    -- Se não houver mais baús por perto, limpa o histórico para re-verificar
-                    CollectedChests = {}
-                    task.wait(2)
+                end
+
+                -- Com alvo definido: checa se já chegou perto o suficiente pra coletar
+                if _G.ChestTarget then
+                    local part = _G.ChestTarget
+                    local dist = (hrp.Position - part.Position).Magnitude
+                    if dist <= 4 then
+                        -- Marca ESSA part especificamente como coletada (mesma chave usada na busca)
+                        CollectedChests[part] = true
+                        _G.ChestTarget = nil
+                        StopMovement()
+                    end
                 end
             end)
+        else
+            _G.ChestTarget = nil
         end
     end
 end)
