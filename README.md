@@ -72,15 +72,21 @@ local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RedeemRemote = Remotes:WaitForChild("Redeem")
 local CommF_ = Remotes:FindFirstChild("CommF_") or Remotes:FindFirstChild("CommF")
 
--- LISTA DE CÓDIGOS
-local PromoCodes = {
-    "EASTEREXP", "fudd10", "fudd10_V2", "Chandler", "BIGNEWS", 
-    "KITT_RESET", "Sub2UncleKizaru", "SUB2GAMERROBOT_RESET1", 
-    "Sub2Fer999", "Enyu_is_Pro", "JCWK", "StarcodeHEO", "MagicBUS", 
-    "KittGaming", "Sub2CaptainMaui", "Sub2OfficialNoobie", "TheGreatAce", 
-    "Sub2NoobMaster123", "Sub2Daigrock", "Axiore", "StrawHatMaine", 
-    "TantaiGaming", "Bluxxy", "SUB2GAMERROBOT_EXP1"
-}
+-- DETECÇÃO UNIVERSAL DE NÍVEL
+local function GetPlayerLevel()
+    local lvl = 1
+    pcall(function()
+        if LocalPlayer:FindFirstChild("leaderstats") and LocalPlayer.leaderstats:FindFirstChild("Level") then
+            lvl = LocalPlayer.leaderstats.Level.Value
+        elseif LocalPlayer:FindFirstChild("Data") and LocalPlayer.Data:FindFirstChild("Level") then
+            lvl = LocalPlayer.Data.Level.Value
+        elseif LocalPlayer:FindFirstChild("PlayerGui") and LocalPlayer.PlayerGui:FindFirstChild("Main") then
+            local lvlText = LocalPlayer.PlayerGui.Main.Level.Text
+            lvl = tonumber(string.match(lvlText, "%d+")) or 1
+        end
+    end)
+    return lvl
+end
 
 -- TABELA DE QUESTS DO SEA 1
 local LevelData = {
@@ -98,15 +104,6 @@ local LevelData = {
     {Min = 450, Max = 699, Quest = "SkyQuest2",          ID = 1, Mob = "God's Guard",     QuestPos = CFrame.new(-4720.4, 845.2, -1950.5)}
 }
 
-local function GetPlayerLevel()
-    pcall(function()
-        if LocalPlayer:FindFirstChild("Data") and LocalPlayer.Data:FindFirstChild("Level") then
-            return LocalPlayer.Data.Level.Value
-        end
-    end)
-    return 1
-end
-
 local function GetQuestData()
     local lvl = GetPlayerLevel()
     for _, data in ipairs(LevelData) do
@@ -114,7 +111,7 @@ local function GetQuestData()
             return data
         end
     end
-    return LevelData[#LevelData]
+    return LevelData[1]
 end
 
 local function HasQuest()
@@ -140,20 +137,6 @@ local function StopMovement()
     end
 end
 
-local function TweenTo(targetCFrame)
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
-    
-    local hrp = char.HumanoidRootPart
-    local dist = (hrp.Position - targetCFrame.Position).Magnitude
-    local time = dist / _G.TweenSpeed
-
-    local tweenInfo = TweenInfo.new(time, Enum.EasingStyle.Linear)
-    _G.CurrentTween = TweenService:Create(hrp, tweenInfo, {CFrame = targetCFrame})
-    _G.CurrentTween:Play()
-end
-
--- LÓGICA DE AUTO CLICKER E EQUIPAR ARMA
 local function DoRealAutoClick()
     pcall(function()
         local char = LocalPlayer.Character
@@ -170,23 +153,15 @@ local function DoRealAutoClick()
             end
         end
         
-        if currentTool then
-            currentTool:Activate()
-        end
+        if currentTool then currentTool:Activate() end
 
         local viewportSize = workspace.CurrentCamera.ViewportSize
-        local centerX = viewportSize.X / 2
-        local centerY = viewportSize.Y / 2
-        
-        VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, true, game, 1)
-        VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, false, game, 1)
-        
-        VirtualUser:CaptureController()
-        VirtualUser:ClickButton1(Vector2.new(centerX, centerY))
+        VirtualInputManager:SendMouseButtonEvent(viewportSize.X / 2, viewportSize.Y / 2, 0, true, game, 1)
+        VirtualInputManager:SendMouseButtonEvent(viewportSize.X / 2, viewportSize.Y / 2, 0, false, game, 1)
     end)
 end
 
--- ABAS DA INTERFACE
+-- INTERFACE FLUENT
 local Tabs = {
     Main = Window:AddTab({ Title = "Auto Farm", Icon = "sword" }),
     Chest = Window:AddTab({ Title = "Baús", Icon = "box" }),
@@ -195,9 +170,7 @@ local Tabs = {
     Settings = Window:AddTab({ Title = "Aparência & Temas", Icon = "settings" })
 }
 
--- 1. AUTO FARM
 Tabs.Main:AddSection("Farm de Nível Automático")
-
 Tabs.Main:AddToggle("AutoFarmLevelToggle", {
     Title = "Ativar Auto Level / Ataque NPC",
     Default = false,
@@ -207,59 +180,6 @@ Tabs.Main:AddToggle("AutoFarmLevelToggle", {
     end
 })
 
--- 2. AUTO STATS
-Tabs.Main:AddSection("Distribuição de Pontos (Auto Stats)")
-
-Tabs.Main:AddToggle("AutoStatsToggle", {
-    Title = "Ativar Auto Stats",
-    Default = false,
-    Callback = function(Value)
-        _G.AutoStats = Value
-    end
-})
-
-Tabs.Main:AddDropdown("StatDropdown", {
-    Title = "Atributo",
-    Values = {"Melee", "Defense", "Sword", "Demon Fruit"},
-    Default = "Melee",
-    Callback = function(Value)
-        _G.SelectedStat = Value
-    end
-})
-
-Tabs.Main:AddSlider("StatPointsSlider", {
-    Title = "Pontos por Vez",
-    Default = 1, Min = 1, Max = 10, Rounding = 0,
-    Callback = function(Value)
-        _G.StatPoints = Value
-    end
-})
-
--- 3. REDEEM CODES
-Tabs.Main:AddSection("Resgate de Códigos (Redeem Codes)")
-
-Tabs.Main:AddButton({
-    Title = "Resgatar Todos os Códigos (DLC)",
-    Description = "Executa a lista enviada via Remote Redeem",
-    Callback = function()
-        Fluent:Notify({ Title = "THULLERX STORE", Content = "Resgatando códigos...", Duration = 3 })
-        task.spawn(function()
-            for _, code in ipairs(PromoCodes) do
-                pcall(function()
-                    if RedeemRemote:IsA("RemoteFunction") then
-                        RedeemRemote:InvokeServer(code)
-                    elseif RedeemRemote:IsA("RemoteEvent") then
-                        RedeemRemote:FireServer(code)
-                    end
-                end)
-                task.wait(0.4)
-            end
-            Fluent:Notify({ Title = "THULLERX STORE", Content = "Códigos resgatados!", Duration = 4 })
-        end)
-    end
-})
-
--- DEMAIS ABAS
 Tabs.Chest:AddSection("Coleta Automática de Baús")
 Tabs.Chest:AddToggle("AutoChestToggle", { 
     Title = "Ativar Auto Farm Baús", 
@@ -270,65 +190,14 @@ Tabs.Chest:AddToggle("AutoChestToggle", {
     end 
 })
 
-Tabs.Movement:AddSection("Ajustes de Posição & Voo")
-Tabs.Movement:AddSlider("HeightSlider", { Title = "Altura do Farm", Default = 2, Min = 0, Max = 8, Rounding = 0, Callback = function(V) _G.FarmHeight = V end })
-Tabs.Movement:AddSlider("SpeedSlider", { Title = "Velocidade (Tween Speed)", Default = 250, Min = 50, Max = 350, Rounding = 0, Callback = function(V) _G.TweenSpeed = V end })
-
-Tabs.Fruit:AddSection("Ações de Frutas")
-Tabs.Fruit:AddToggle("AutoSpinToggle", { Title = "Auto Girar Fruta", Default = false, Callback = function(V) _G.AutoSpinFruit = V end })
-Tabs.Fruit:AddToggle("AutoStoreToggle", { Title = "Auto Guardar Frutas", Default = false, Callback = function(V) _G.AutoStoreFruit = V end })
-
--- 5. NOVAS CUSTOMIZAÇÕES DE INTERFACE
 Tabs.Settings:AddSection("Aparência do Menu")
+Tabs.Settings:AddDropdown("ThemeDropdown", { Title = "Tema do Menu", Values = {"Darker", "Dark", "Midnight", "Aqua", "Amethyst"}, Default = "Darker", Callback = function(V) Fluent:SetTheme(V) end })
 
-Tabs.Settings:AddDropdown("ThemeDropdown", { 
-    Title = "Tema do Menu", 
-    Values = {"Darker", "Dark", "Midnight", "Aqua", "Amethyst", "Rose"}, 
-    Default = "Darker", 
-    Callback = function(V) Fluent:SetTheme(V) end 
-})
-
-Tabs.Settings:AddDropdown("FontDropdown", {
-    Title = "Fonte da Marca d'Água",
-    Values = {"SourceSansBold", "FredokaOne", "GothamBold", "Arcade", "Bodoni"},
-    Default = "SourceSansBold",
-    Callback = function(V)
-        TextLabel.Font = Enum.Font[V]
-    end
-})
-
-local ColorPicker = Tabs.Settings:AddColorpicker("WatermarkColor", { Title = "Cor da Borda e Texto", Default = Color3.fromRGB(255, 50, 50) })
-ColorPicker:OnChanged(function()
-    TextLabel.TextColor3 = ColorPicker.Value
-    MainFrame.BorderColor3 = ColorPicker.Value
-end)
-
-Tabs.Settings:AddToggle("WatermarkVisibleToggle", {
-    Title = "Exibir Marca d'Água na Tela",
-    Default = true,
-    Callback = function(V)
-        MainFrame.Visible = V
-    end
-})
-
--- LOOP AUTO STATS
-task.spawn(function()
-    while true do
-        task.wait(0.5)
-        if _G.AutoStats and CommF_ then
-            pcall(function()
-                CommF_:InvokeServer("AddPoint", _G.SelectedStat, _G.StatPoints)
-            end)
-        end
-    end
-end)
-
--- BUSCA INIMIGO DA MISSÃO ATUAL
+-- BUSCA INIMIGO DA MISSÃO
 local function GetTargetEnemy(mobName)
     local closest = nil
     local shortestDistance = math.huge
     local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    
     if not hrp then return nil end
     
     local enemies = workspace:FindFirstChild("Enemies") or workspace
@@ -346,7 +215,7 @@ local function GetTargetEnemy(mobName)
     return closest
 end
 
--- LOOP PRINCIPAL DE AUTO FARM / AUTO QUEST
+-- LOOP AUTO FARM / AUTO QUEST
 local currentTarget = nil
 task.spawn(function()
     while true do
@@ -357,33 +226,27 @@ task.spawn(function()
                 local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                 if not hrp then return end
 
-                -- 1. Se tem quest antiga de outra ilha, abandona
+                -- Se tiver quest de outro NPC/ilha, abandona
                 if HasQuest() and not string.find(string.lower(GetCurrentQuestTitle()), string.lower(qData.Mob)) then
-                    if CommF_ then
-                        CommF_:InvokeServer("AbandonQuest")
-                    end
+                    if CommF_ then CommF_:InvokeServer("AbandonQuest") end
                 end
 
-                -- 2. Se não tem a quest atual, voa até o NPC da nova ilha e pega
+                -- Se não tiver quest, move até o NPC e pega a missão
                 if not HasQuest() then
                     local distToNPC = (hrp.Position - qData.QuestPos.Position).Magnitude
                     if distToNPC > 15 then
-                        TweenTo(qData.QuestPos)
+                        hrp.CFrame = qData.QuestPos
                     else
-                        StopMovement()
-                        if CommF_ then
-                            CommF_:InvokeServer("StartQuest", qData.Quest, qData.ID)
-                        end
+                        if CommF_ then CommF_:InvokeServer("StartQuest", qData.Quest, qData.ID) end
                     end
                     return
                 end
 
-                -- 3. Já tem a quest: busca o Mob específico da missão
-                if not currentTarget or not currentTarget:FindFirstChild("Humanoid") or currentTarget.Humanoid.Health <= 0 or not currentTarget:FindFirstChild("HumanoidRootPart") then
+                -- Ataca o NPC correspondente à quest
+                if not currentTarget or not currentTarget:FindFirstChild("Humanoid") or currentTarget.Humanoid.Health <= 0 then
                     currentTarget = GetTargetEnemy(qData.Mob)
                 end
 
-                -- 4. Ataca o NPC sem travar a câmera
                 if currentTarget and currentTarget:FindFirstChild("HumanoidRootPart") then
                     hrp.CFrame = currentTarget.HumanoidRootPart.CFrame * CFrame.new(0, _G.FarmHeight, 0)
                     DoRealAutoClick()
@@ -395,7 +258,7 @@ task.spawn(function()
     end
 end)
 
--- LOOP DEDICADO DO AUTO CHEST
+-- LOOP DEDICADO AUTO CHEST
 task.spawn(function()
     while true do
         task.wait(0.1)
@@ -404,24 +267,15 @@ task.spawn(function()
                 local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                 if not hrp then return end
                 
-                local closestChest = nil
-                local shortestDist = math.huge
-                
                 for _, obj in pairs(workspace:GetDescendants()) do
-                    if string.find(string.lower(obj.Name), "chest") and (obj:IsA("Model") or obj:IsA("BasePart")) then
-                        local chestPart = obj:IsA("BasePart") and obj or (obj:FindFirstChild("TouchInterest") and obj.TouchInterest.Parent or obj:FindFirstChildOfClass("BasePart"))
-                        if chestPart then
-                            local dist = (hrp.Position - chestPart.Position).Magnitude
-                            if dist < shortestDist then
-                                shortestDist = dist
-                                closestChest = chestPart
-                            end
+                    if string.find(string.lower(obj.Name), "chest") then
+                        local part = obj:IsA("BasePart") and obj or obj:FindFirstChildOfClass("BasePart")
+                        if part and part.Transparency < 1 then
+                            hrp.CFrame = part.CFrame
+                            task.wait(0.2)
+                            if not _G.AutoChest then break end
                         end
                     end
-                end
-                
-                if closestChest then
-                    hrp.CFrame = closestChest.CFrame * CFrame.new(0, 2, 0)
                 end
             end)
         end
