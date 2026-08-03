@@ -1,5 +1,5 @@
 -- ======================================================================
--- THULLERX STORE - HUB OFICIAL BLOX FRUITS (AUTO QUEST & CUSTOM UI V5)
+-- THULLERX STORE - HUB OFICIAL BLOX FRUITS (WITH AUTO CODES V7)
 -- ======================================================================
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -62,20 +62,44 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- TABELA DE QUESTS REAL DO BLOX FRUITS (First Sea)
+-- Lista de Códigos do Blox Fruits
+local PromoCodes = {
+    "KITT_RESET",
+    "Sub2Fer999",
+    "Enyu_is_Pro",
+    "Magicbus",
+    "JCWK",
+    "Starcodeheo",
+    "Bluxxy",
+    "fudd10_v2",
+    "FUDD10",
+    "BIGNEWS",
+    "THEGREATACE",
+    "SUB2GAMERROBOT_RESET1",
+    "SUB2GAMERROBOT_EXP1",
+    "Sub2OfficialNoobie",
+    "Sub2UncleKizaru",
+    "Sub2NoobMaster123",
+    "Sub2Daigrock",
+    "Axiore",
+    "TantaiGaming",
+    "STRAHATMAINE"
+}
+
+-- TABELA DE QUESTS DO BLOX FRUITS (First Sea)
 local LevelData = {
-    {Min = 1,   Max = 9,   Quest = "BanditQuest1",       ID = 1, Mob = "Bandit",          QuestPos = CFrame.new(1059, 16, 1548)},
-    {Min = 10,  Max = 29,  Quest = "JungleQuest",        ID = 1, Mob = "Monkey",          QuestPos = CFrame.new(-1598, 36, 153)},
-    {Min = 30,  Max = 59,  Quest = "BuggyQuest1",        ID = 1, Mob = "Pirate",          QuestPos = CFrame.new(-1141, 4, 3856)},
-    {Min = 60,  Max = 89,  Quest = "DesertQuest",        ID = 1, Mob = "Desert Bandit",   QuestPos = CFrame.new(897, 6, 4388)},
-    {Min = 90,  Max = 119, Quest = "SnowQuest",          ID = 1, Mob = "Snow Bandit",     QuestPos = CFrame.new(1385, 87, -1298)},
-    {Min = 120, Max = 149, Quest = "MarineQuest2",       ID = 1, Mob = "Chief Petty Officer", QuestPos = CFrame.new(-5036, 20, 4324)},
-    {Min = 150, Max = 189, Quest = "SkyQuest",           ID = 1, Mob = "Sky Bandit",      QuestPos = CFrame.new(-4839, 717, -2620)},
-    {Min = 190, Max = 249, Quest = "PrisonerQuest",      ID = 1, Mob = "Prisoner",        QuestPos = CFrame.new(485, 4, 735)},
-    {Min = 250, Max = 299, Quest = "ColosseumQuest",     ID = 1, Mob = "Toga Warrior",    QuestPos = CFrame.new(-1820, 7, -2745)},
-    {Min = 300, Max = 374, Quest = "MagmaQuest",         ID = 1, Mob = "Military Soldier", QuestPos = CFrame.new(-5315, 8, 8515)},
-    {Min = 375, Max = 449, Quest = "FishmanQuest",       ID = 1, Mob = "Fishman Warrior", QuestPos = CFrame.new(61122, 18, 1569)},
-    {Min = 450, Max = 699, Quest = "SkyQuest2",          ID = 1, Mob = "God's Guard",     QuestPos = CFrame.new(-4720, 845, -1950)}
+    {Min = 1,   Max = 9,   Quest = "BanditQuest1",       ID = 1, Mob = "Bandit",          QuestPos = CFrame.new(1059.3, 16.4, 1548.6)},
+    {Min = 10,  Max = 29,  Quest = "JungleQuest",        ID = 1, Mob = "Monkey",          QuestPos = CFrame.new(-1598.4, 36.8, 153.8)},
+    {Min = 30,  Max = 59,  Quest = "BuggyQuest1",        ID = 1, Mob = "Pirate",          QuestPos = CFrame.new(-1141.0, 4.7, 3856.2)},
+    {Min = 60,  Max = 89,  Quest = "DesertQuest",        ID = 1, Mob = "Desert Bandit",   QuestPos = CFrame.new(897.0, 6.4, 4388.0)},
+    {Min = 90,  Max = 119, Quest = "SnowQuest",          ID = 1, Mob = "Snow Bandit",     QuestPos = CFrame.new(1385.8, 87.2, -1298.6)},
+    {Min = 120, Max = 149, Quest = "MarineQuest2",       ID = 1, Mob = "Chief Petty Officer", QuestPos = CFrame.new(-5036.0, 28.6, 4324.7)},
+    {Min = 150, Max = 189, Quest = "SkyQuest",           ID = 1, Mob = "Sky Bandit",      QuestPos = CFrame.new(-4839.5, 717.5, -2620.5)},
+    {Min = 190, Max = 249, Quest = "PrisonerQuest",      ID = 1, Mob = "Prisoner",        QuestPos = CFrame.new(485.6, 4.4, 735.6)},
+    {Min = 250, Max = 299, Quest = "ColosseumQuest",     ID = 1, Mob = "Toga Warrior",    QuestPos = CFrame.new(-1820.2, 7.2, -2745.8)},
+    {Min = 300, Max = 374, Quest = "MagmaQuest",         ID = 1, Mob = "Military Soldier", QuestPos = CFrame.new(-5315.8, 12.2, 8515.2)},
+    {Min = 375, Max = 449, Quest = "FishmanQuest",       ID = 1, Mob = "Fishman Warrior", QuestPos = CFrame.new(61122.5, 18.4, 1569.3)},
+    {Min = 450, Max = 699, Quest = "SkyQuest2",          ID = 1, Mob = "God's Guard",     QuestPos = CFrame.new(-4720.4, 845.2, -1950.5)}
 }
 
 -- Parar Movimento
@@ -123,18 +147,20 @@ local function GetQuestData()
     return LevelData[#LevelData]
 end
 
--- Verificar se já está com quest
+-- Verificação de Quest Ativa
 local function HasQuest()
-    local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-    if playerGui and playerGui:FindFirstChild("Main") and playerGui.Main:FindFirstChild("Quest") then
-        return playerGui.Main.Quest.Visible
+    local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if pGui and pGui:FindFirstChild("Main") and pGui.Main:FindFirstChild("Quest") then
+        return pGui.Main.Quest.Visible and pGui.Main.Quest.Container.QuestTitle.Title.Text ~= ""
     end
     return false
 end
 
--- Pegar Quest no Server
-local function AcceptQuest(data)
-    ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest", data.Quest, data.ID)
+-- Pega Quest
+local function TakeQuest(qData)
+    pcall(function()
+        ReplicatedStorage.Remotes.CommF_:InvokeServer("StartQuest", qData.Quest, qData.ID)
+    end)
 end
 
 -- Ataque
@@ -165,9 +191,9 @@ local Tabs = {
 }
 
 -- ======================================================================
--- 1. AUTO FARM LEVEL & QUEST
+-- 1. AUTO FARM LEVEL & CODES
 -- ======================================================================
-Tabs.Main:AddSection("Farm de Nível + Auto Quest")
+Tabs.Main:AddSection("Farm de Nível Automático")
 
 Tabs.Main:AddToggle("AutoFarmLevelToggle", {
     Title = "Ativar Auto Level (Com Quests)",
@@ -178,6 +204,35 @@ Tabs.Main:AddToggle("AutoFarmLevelToggle", {
     end
 })
 
+Tabs.Main:AddSection("Recompensas & Promocodes")
+
+-- Botão de Resgatar Todos os Códigos
+Tabs.Main:AddButton({
+    Title = "Resgatar Todos os Códigos (Redeem All Codes)",
+    Description = "Aplica automaticamente todos os códigos de XP 2x e Beli ativas",
+    Callback = function()
+        Fluent:Notify({
+            Title = "THULLERX STORE",
+            Content = "Resgatando códigos... Aguarde!",
+            Duration = 3
+        })
+        task.spawn(function()
+            for _, code in ipairs(PromoCodes) do
+                pcall(function()
+                    ReplicatedStorage.Remotes.CommF_:InvokeServer("RedeemCode", code)
+                end)
+                task.wait(0.2)
+            end
+            Fluent:Notify({
+                Title = "THULLERX STORE",
+                Content = "Todos os códigos foram resgatados com sucesso!",
+                Duration = 5
+            })
+        end)
+    end
+})
+
+-- Loop do Auto Farm
 task.spawn(function()
     while true do
         task.wait(0.1)
@@ -185,15 +240,18 @@ task.spawn(function()
             pcall(function()
                 local qData = GetQuestData()
                 
-                -- Se NÃO tem quest ativa, voa pro NPC da Quest e pega a missão
                 if not HasQuest() then
-                    local tween = TweenTo(qData.QuestPos * CFrame.new(0, 3, 0))
-                    if tween then tween.Completed:Wait() end
-                    task.wait(0.3)
-                    AcceptQuest(qData)
-                    task.wait(0.5)
+                    local dist = (LocalPlayer.Character.HumanoidRootPart.Position - qData.QuestPos.Position).Magnitude
+                    if dist > 15 then
+                        local tween = TweenTo(qData.QuestPos * CFrame.new(0, 3, 0))
+                        if tween then tween.Completed:Wait() end
+                    else
+                        LocalPlayer.Character.HumanoidRootPart.CFrame = qData.QuestPos * CFrame.new(0, 3, 0)
+                        task.wait(0.2)
+                        TakeQuest(qData)
+                        task.wait(0.5)
+                    end
                 else
-                    -- Já tem quest: Procura o Mob da missão no Workspace
                     local enemies = workspace:FindFirstChild("Enemies")
                     local targetEnemy = nil
 
@@ -206,15 +264,18 @@ task.spawn(function()
                         end
                     end
 
-                    -- Se encontrou o mob, vai até ele e ataca
                     if targetEnemy then
                         while _G.AutoFarmLevel and HasQuest() and targetEnemy and targetEnemy:FindFirstChild("Humanoid") and targetEnemy.Humanoid.Health > 0 do
                             task.wait(0.05)
-                            local mobPos = targetEnemy.HumanoidRootPart.CFrame * CFrame.new(0, 7, 0)
+                            local mobPos = targetEnemy.HumanoidRootPart.CFrame * CFrame.new(0, 6, 0)
                             local tween = TweenTo(mobPos)
                             if tween then tween.Completed:Wait() end
                             DoAttack()
                         end
+                    else
+                        local islandPos = qData.QuestPos * CFrame.new(0, 20, 100)
+                        local tween = TweenTo(islandPos)
+                        if tween then tween.Completed:Wait() end
                     end
                 end
             end)
@@ -314,7 +375,6 @@ end)
 -- ======================================================================
 Tabs.Settings:AddSection("Temas e Cores do Menu")
 
--- Troca de Temas da Interface Fluent
 Tabs.Settings:AddDropdown("ThemeDropdown", {
     Title = "Tema da Interface",
     Values = {"Darker", "Dark", "Midnight", "Aqua", "Amethyst", "Rose"},
@@ -324,7 +384,6 @@ Tabs.Settings:AddDropdown("ThemeDropdown", {
     end
 })
 
--- Efeito Transparência / Blur (Acrylic)
 Tabs.Settings:AddToggle("AcrylicToggle", {
     Title = "Efeito Transparência (Acrylic)",
     Default = true,
@@ -335,7 +394,6 @@ Tabs.Settings:AddToggle("AcrylicToggle", {
 
 Tabs.Settings:AddSection("Marca d'Água (THULLERX STORE)")
 
--- Color Picker da Marca D'água
 local ColorPicker = Tabs.Settings:AddColorpicker("WatermarkColor", {
     Title = "Cor da Marca d'Água & Borda",
     Default = Color3.fromRGB(255, 50, 50)
@@ -346,7 +404,6 @@ ColorPicker:OnChanged(function()
     MainFrame.BorderColor3 = ColorPicker.Value
 end)
 
--- Mostrar / Esconder a Marca d'Água
 Tabs.Settings:AddToggle("ShowWatermark", {
     Title = "Exibir Caixa THULLERX STORE na Tela",
     Default = true,
