@@ -1,5 +1,5 @@
 -- ======================================================================
--- THULLERX STORE - HUB OFICIAL BLOX FRUITS (AUTO STATS & HIT FIXED V8)
+-- THULLERX STORE - HUB OFICIAL BLOX FRUITS (DIRECT CLICK & HEIGHT V9)
 -- ======================================================================
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -58,6 +58,7 @@ _G.AutoStats = false
 _G.SelectedStat = "Melee"
 _G.StatPoints = 1
 _G.TweenSpeed = 250
+_G.FarmHeight = 6 -- Altura padrão do personagem acima do NPC
 _G.CurrentTween = nil
 
 local TweenService = game:GetService("TweenService")
@@ -66,7 +67,7 @@ local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
 
--- Lista de PromoCodes
+-- Lista de PromoCodes Ativos
 local PromoCodes = {
     "KITT_RESET",
     "Sub2Fer999",
@@ -167,25 +168,21 @@ local function TakeQuest(qData)
     end)
 end
 
--- Sistema de Ataque e Dano Direto
-local function DoAttack(targetEnemy)
+-- Sistema de Ataque e Clique Automático Perto do NPC
+local function DoAttack()
     pcall(function()
         local char = LocalPlayer.Character
         if char then
+            -- Equipar Arma se não estiver segurando
             local tool = char:FindFirstChildOfClass("Tool")
             if not tool then
                 local bTool = LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
                 if bTool then char.Humanoid:EquipTool(bTool) end
             else
+                -- Ativar ferramenta + clicar na tela
                 tool:Activate()
-                -- Clique virtual + registro do Hit no Servidor
                 VirtualUser:CaptureController()
-                VirtualUser:Button1Down(Vector2.new(0,0))
-                
-                if targetEnemy and targetEnemy:FindFirstChild("HumanoidRootPart") then
-                    ReplicatedStorage.Remotes.CommF_:InvokeServer("RegisterAttack")
-                    ReplicatedStorage.Remotes.CommF_:InvokeServer("RegisterHit", targetEnemy.HumanoidRootPart)
-                end
+                VirtualUser:Button1Down(Vector2.new(0, 0))
             end
         end
     end)
@@ -219,7 +216,7 @@ Tabs.Main:AddToggle("AutoFarmLevelToggle", {
 Tabs.Main:AddSection("Estatísticas & Atributos (Auto Stats)")
 
 Tabs.Main:AddToggle("AutoStatsToggle", {
-    Title = "Ativar Distribution de Pontos",
+    Title = "Ativar Distribuição de Pontos",
     Default = false,
     Callback = function(Value)
         _G.AutoStats = Value
@@ -248,7 +245,7 @@ Tabs.Main:AddSlider("StatPointsSlider", {
 
 Tabs.Main:AddSection("Recompensas & Promocodes")
 
--- Botão de Resgatar Todos os Códigos (Corrigido)
+-- Botão de Resgatar Todos os Códigos (Método Duplo)
 Tabs.Main:AddButton({
     Title = "Resgatar Todos os Códigos (Redeem All Codes)",
     Description = "Aplica automaticamente todos os códigos de XP 2x e Beli ativos",
@@ -263,11 +260,11 @@ Tabs.Main:AddButton({
                 pcall(function()
                     ReplicatedStorage.Remotes.CommF_:InvokeServer("RedeemCode", tostring(code))
                 end)
-                task.wait(0.3)
+                task.wait(0.2)
             end
             Fluent:Notify({
                 Title = "THULLERX STORE",
-                Content = "Processo finalizado!",
+                Content = "Todos os códigos foram aplicados!",
                 Duration = 4
             })
         end)
@@ -286,7 +283,7 @@ task.spawn(function()
     end
 end)
 
--- Loop do Auto Farm
+-- Loop do Auto Farm (Com Validação de NPC Próximo e Clicks)
 task.spawn(function()
     while true do
         task.wait(0.1)
@@ -319,14 +316,19 @@ task.spawn(function()
                     end
 
                     if targetEnemy then
+                        -- Loop enquanto o mob estiver vivo e a quest ativa
                         while _G.AutoFarmLevel and HasQuest() and targetEnemy and targetEnemy:FindFirstChild("Humanoid") and targetEnemy.Humanoid.Health > 0 do
                             task.wait(0.05)
-                            local mobPos = targetEnemy.HumanoidRootPart.CFrame * CFrame.new(0, 6, 0)
+                            -- Posiciona o jogador com base na altura personalizada (_G.FarmHeight)
+                            local mobPos = targetEnemy.HumanoidRootPart.CFrame * CFrame.new(0, _G.FarmHeight, 0)
                             local tween = TweenTo(mobPos)
                             if tween then tween.Completed:Wait() end
-                            DoAttack(targetEnemy)
+                            
+                            -- Bate / Clica no NPC só enquanto estiver perto
+                            DoAttack()
                         end
                     else
+                        -- Sem NPC na área: vai para a área de spawn e NÃO clica
                         local islandPos = qData.QuestPos * CFrame.new(0, 20, 100)
                         local tween = TweenTo(islandPos)
                         if tween then tween.Completed:Wait() end
@@ -377,9 +379,21 @@ task.spawn(function()
 end)
 
 -- ======================================================================
--- 3. MOVIMENTAÇÃO
+-- 3. MOVIMENTAÇÃO E ALTURA
 -- ======================================================================
-Tabs.Movement:AddSection("Velocidade do Voo")
+Tabs.Movement:AddSection("Ajustes de Posição & Voo")
+
+Tabs.Movement:AddSlider("HeightSlider", {
+    Title = "Altura do Farm (Distância do NPC)",
+    Description = "Diminua se a sua espada/estilo de luta não alcançar o mob",
+    Default = 6,
+    Min = 0,
+    Max = 15,
+    Rounding = 0,
+    Callback = function(Value)
+        _G.FarmHeight = Value
+    end
+})
 
 Tabs.Movement:AddSlider("SpeedSlider", {
     Title = "Velocidade (Tween Speed)",
