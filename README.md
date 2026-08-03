@@ -1,5 +1,5 @@
 -- ======================================================================
--- THULLERX STORE - HUB OFICIAL (TARGET BY NPC NAME)
+-- THULLERX STORE - HUB OFICIAL (AUTO FARM + AUTO QUEST)
 -- ======================================================================
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -51,7 +51,6 @@ StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 -- Variáveis Globais
 _G.AutoFarmLevel = false
-_G.TargetNPCName = ""
 _G.AutoChest = false
 _G.AutoSpinFruit = false
 _G.AutoStoreFruit = false
@@ -71,6 +70,7 @@ local VirtualUser = game:GetService("VirtualUser")
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RedeemRemote = Remotes:WaitForChild("Redeem")
+local CommF_ = Remotes:FindFirstChild("CommF_") or Remotes:FindFirstChild("CommF")
 
 -- LISTA DE CÓDIGOS
 local PromoCodes = {
@@ -82,6 +82,49 @@ local PromoCodes = {
     "TantaiGaming", "Bluxxy", "SUB2GAMERROBOT_EXP1"
 }
 
+-- TABELA DE QUESTS DO SEA 1
+local LevelData = {
+    {Min = 1,   Max = 9,   Quest = "BanditQuest1",       ID = 1, Mob = "Bandit",          QuestPos = CFrame.new(1059.3, 16.4, 1548.6)},
+    {Min = 10,  Max = 29,  Quest = "JungleQuest",        ID = 1, Mob = "Monkey",          QuestPos = CFrame.new(-1598.4, 36.8, 153.8)},
+    {Min = 30,  Max = 59,  Quest = "BuggyQuest1",        ID = 1, Mob = "Pirate",          QuestPos = CFrame.new(-1141.0, 4.7, 3856.2)},
+    {Min = 60,  Max = 89,  Quest = "DesertQuest",        ID = 1, Mob = "Desert Bandit",   QuestPos = CFrame.new(897.0, 6.4, 4388.0)},
+    {Min = 90,  Max = 119, Quest = "SnowQuest",          ID = 1, Mob = "Snow Bandit",     QuestPos = CFrame.new(1385.8, 87.2, -1298.6)},
+    {Min = 120, Max = 149, Quest = "MarineQuest2",       ID = 1, Mob = "Chief Petty Officer", QuestPos = CFrame.new(-5036.0, 28.6, 4324.7)},
+    {Min = 150, Max = 189, Quest = "SkyQuest",           ID = 1, Mob = "Sky Bandit",      QuestPos = CFrame.new(-4839.5, 717.5, -2620.5)},
+    {Min = 190, Max = 249, Quest = "PrisonerQuest",      ID = 1, Mob = "Prisoner",        QuestPos = CFrame.new(485.6, 4.4, 735.6)},
+    {Min = 250, Max = 299, Quest = "ColosseumQuest",     ID = 1, Mob = "Toga Warrior",    QuestPos = CFrame.new(-1820.2, 7.2, -2745.8)},
+    {Min = 300, Max = 374, Quest = "MagmaQuest",         ID = 1, Mob = "Military Soldier", QuestPos = CFrame.new(-5315.8, 12.2, 8515.2)},
+    {Min = 375, Max = 449, Quest = "FishmanQuest",       ID = 1, Mob = "Fishman Warrior", QuestPos = CFrame.new(61122.5, 18.4, 1569.3)},
+    {Min = 450, Max = 699, Quest = "SkyQuest2",          ID = 1, Mob = "God's Guard",     QuestPos = CFrame.new(-4720.4, 845.2, -1950.5)}
+}
+
+local function GetPlayerLevel()
+    pcall(function()
+        if LocalPlayer:FindFirstChild("Data") and LocalPlayer.Data:FindFirstChild("Level") then
+            return LocalPlayer.Data.Level.Value
+        end
+    end)
+    return 1
+end
+
+local function GetQuestData()
+    local lvl = GetPlayerLevel()
+    for _, data in ipairs(LevelData) do
+        if lvl >= data.Min and lvl <= data.Max then
+            return data
+        end
+    end
+    return LevelData[#LevelData]
+end
+
+local function HasQuest()
+    local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if pGui and pGui:FindFirstChild("Main") and pGui.Main:FindFirstChild("Quest") then
+        return pGui.Main.Quest.Visible and pGui.Main.Quest.Container.QuestTitle.Title.Text ~= ""
+    end
+    return false
+end
+
 local function StopMovement()
     if _G.CurrentTween then
         _G.CurrentTween:Cancel()
@@ -89,7 +132,7 @@ local function StopMovement()
     end
 end
 
--- LÓGICA DE AUTO CLICKER
+-- LÓGICA DE AUTO CLICKER E EQUIPAR ARMA
 local function DoRealAutoClick()
     pcall(function()
         local char = LocalPlayer.Character
@@ -131,17 +174,8 @@ local Tabs = {
     Settings = Window:AddTab({ Title = "Aparência & Temas", Icon = "settings" })
 }
 
--- 1. SEÇÃO AUTO FARM E NPC TARGET
+-- 1. AUTO FARM
 Tabs.Main:AddSection("Farm de Nível Automático")
-
-Tabs.Main:AddInput("NPCNameInput", {
-    Title = "Nome Exato do NPC da Missão",
-    Default = "",
-    Placeholder = "Ex: Bandit, Monkey, Pirate...",
-    Callback = function(Text)
-        _G.TargetNPCName = Text
-    end
-})
 
 Tabs.Main:AddToggle("AutoFarmLevelToggle", {
     Title = "Ativar Auto Level / Ataque NPC",
@@ -152,7 +186,7 @@ Tabs.Main:AddToggle("AutoFarmLevelToggle", {
     end
 })
 
--- 2. SEÇÃO AUTO STATS
+-- 2. AUTO STATS
 Tabs.Main:AddSection("Distribuição de Pontos (Auto Stats)")
 
 Tabs.Main:AddToggle("AutoStatsToggle", {
@@ -180,7 +214,7 @@ Tabs.Main:AddSlider("StatPointsSlider", {
     end
 })
 
--- 3. SEÇÃO CÓDIGOS
+-- 3. REDEEM CODES
 Tabs.Main:AddSection("Resgate de Códigos (Redeem Codes)")
 
 Tabs.Main:AddButton({
@@ -229,16 +263,16 @@ end)
 task.spawn(function()
     while true do
         task.wait(0.5)
-        if _G.AutoStats then
+        if _G.AutoStats and CommF_ then
             pcall(function()
-                Remotes:WaitForChild("CommF_"):InvokeServer("AddPoint", _G.SelectedStat, _G.StatPoints)
+                CommF_:InvokeServer("AddPoint", _G.SelectedStat, _G.StatPoints)
             end)
         end
     end
 end)
 
--- BUSCA NPC POR NOME FIEL
-local function GetTargetEnemy()
+-- BUSCA O NPC MAIS PRÓXIMO
+local function GetClosestEnemy()
     local closest = nil
     local shortestDistance = math.huge
     local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -248,28 +282,33 @@ local function GetTargetEnemy()
     local enemies = workspace:FindFirstChild("Enemies") or workspace
     for _, enemy in pairs(enemies:GetChildren()) do
         if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 and enemy:FindFirstChild("HumanoidRootPart") then
-            -- Se o usuário colocou o nome do NPC, filtra por ele
-            if _G.TargetNPCName == "" or string.find(string.lower(enemy.Name), string.lower(_G.TargetNPCName)) then
-                local dist = (enemy.HumanoidRootPart.Position - hrp.Position).Magnitude
-                if dist < shortestDistance then
-                    shortestDistance = dist
-                    closest = enemy
-                end
+            local dist = (enemy.HumanoidRootPart.Position - hrp.Position).Magnitude
+            if dist < shortestDistance then
+                shortestDistance = dist
+                closest = enemy
             end
         end
     end
     return closest
 end
 
--- LOOP PRINCIPAL DO FARM & ATAQUE
+-- LOOP PRINCIPAL DE AUTO FARM / AUTO QUEST
 local currentTarget = nil
 task.spawn(function()
     while true do
         task.wait(0.05)
         if _G.AutoFarmLevel then
             pcall(function()
+                local qData = GetQuestData()
+                
+                -- Se não tem quest, tenta pegar
+                if not HasQuest() and CommF_ then
+                    CommF_:InvokeServer("StartQuest", qData.Quest, qData.ID)
+                end
+
+                -- Mantém o alvo atual até ele morrer
                 if not currentTarget or not currentTarget:FindFirstChild("Humanoid") or currentTarget.Humanoid.Health <= 0 or not currentTarget:FindFirstChild("HumanoidRootPart") then
-                    currentTarget = GetTargetEnemy()
+                    currentTarget = GetClosestEnemy()
                 end
 
                 if currentTarget and currentTarget:FindFirstChild("HumanoidRootPart") then
