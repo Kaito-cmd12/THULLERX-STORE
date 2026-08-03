@@ -1,5 +1,5 @@
 -- ======================================================================
--- THULLERX STORE - HUB OFICIAL (DLC CODES & COMBAT FIX)
+-- THULLERX STORE - HUB OFICIAL (AUTO CLICKER & COMBAT FIX)
 -- ======================================================================
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -65,9 +65,9 @@ local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 local VirtualUser = game:GetService("VirtualUser")
 
--- REMOTE ENCONTRADO NA SUA IMAGEM: ReplicatedStorage.Remotes.Redeem
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RedeemRemote = Remotes:WaitForChild("Redeem")
 
@@ -88,41 +88,40 @@ local function StopMovement()
     end
 end
 
-local function TweenTo(targetCFrame)
-    local character = LocalPlayer.Character
-    if character and character:FindFirstChild("HumanoidRootPart") then
-        local hrp = character.HumanoidRootPart
-        local distance = (hrp.Position - targetCFrame.Position).Magnitude
-        local duration = distance / _G.TweenSpeed
-        
-        StopMovement()
-        local tweenInfo = TweenInfo.new(duration, Enum.EasingStyle.Linear)
-        _G.CurrentTween = TweenService:Create(hrp, tweenInfo, {CFrame = targetCFrame})
-        _G.CurrentTween:Play()
-        return _G.CurrentTween
-    end
-end
-
--- SISTEMA DE ATAQUE (FORÇA O CLIQUE NO NPC)
-local function DoFastAttack()
+-- LÓGICA DE AUTO CLICKER E AUTO EQUIPAR ESTILO DE LUTA / ARMA
+local function DoRealAutoClick()
     pcall(function()
         local char = LocalPlayer.Character
-        if not char then return end
+        if not char or not char:FindFirstChild("Humanoid") then return end
         
-        -- Equipa a ferramenta
-        local tool = char:FindFirstChildOfClass("Tool")
-        if not tool then
+        -- 1. Equipa o estilo de luta ou primeira ferramenta se a mão estiver vazia
+        local currentTool = char:FindFirstChildOfClass("Tool")
+        if not currentTool then
             for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
                 if item:IsA("Tool") then
                     char.Humanoid:EquipTool(item)
+                    currentTool = item
                     break
                 end
             end
-        else
-            tool:Activate()
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton1(Vector2.new(500, 500))
         end
+        
+        -- 2. Ativa a ferramenta (Disparo interno do jogo)
+        if currentTool then
+            currentTool:Activate()
+        end
+
+        -- 3. Simula o Clique Esquerdo REAL na tela (Auto Clicker Físico)
+        local viewportSize = workspace.CurrentCamera.ViewportSize
+        local centerX = viewportSize.X / 2
+        local centerY = viewportSize.Y / 2
+        
+        VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, true, game, 1)
+        VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, false, game, 1)
+        
+        -- Método secundário de redundância
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton1(Vector2.new(centerX, centerY))
     end)
 end
 
@@ -157,7 +156,6 @@ Tabs.Main:AddButton({
         task.spawn(function()
             for _, code in ipairs(PromoCodes) do
                 pcall(function()
-                    -- Tenta chamar tanto InvokeServer quanto FireServer por garantia
                     if RedeemRemote:IsA("RemoteFunction") then
                         RedeemRemote:InvokeServer(code)
                     elseif RedeemRemote:IsA("RemoteEvent") then
@@ -186,7 +184,7 @@ Tabs.Chest:AddToggle("AutoChestToggle", {
 Tabs.Movement:AddSection("Ajustes de Posição & Voo")
 Tabs.Movement:AddSlider("HeightSlider", {
     Title = "Altura do Farm (Distância do NPC)",
-    Description = "Deixe em 1 ou 2 para o soco/espada acertar",
+    Description = "Ajuste entre 0 e 3 para o soco/estilo de luta alcançar o NPC",
     Default = 2, Min = 0, Max = 8, Rounding = 0,
     Callback = function(Value) _G.FarmHeight = Value end
 })
@@ -216,10 +214,10 @@ ColorPicker:OnChanged(function()
     MainFrame.BorderColor3 = ColorPicker.Value
 end)
 
--- LOOP PRINCIPAL DO FARM & ATAQUE
+-- LOOP PRINCIPAL DO FARM & ATAQUE (AUTO CLICKER)
 task.spawn(function()
     while true do
-        task.wait(0.05)
+        task.wait(0.05) -- Frequência rápida de ataques
         if _G.AutoFarmLevel then
             pcall(function()
                 local enemies = workspace:FindFirstChild("Enemies") or workspace
@@ -234,11 +232,14 @@ task.spawn(function()
                 end
 
                 if targetEnemy then
-                    -- Cola direto no NPC na altura definida
+                    -- Posiciona colado no NPC na altura definida
                     LocalPlayer.Character.HumanoidRootPart.CFrame = targetEnemy.HumanoidRootPart.CFrame * CFrame.new(0, _G.FarmHeight, 0)
                     
-                    -- Ataca constantemente
-                    DoFastAttack()
+                    -- Faz o boneco olhar diretamente para o NPC para o golpe conectar
+                    workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, targetEnemy.HumanoidRootPart.Position)
+                    
+                    -- Dispara o Auto Clicker
+                    DoRealAutoClick()
                 end
             end)
         end
