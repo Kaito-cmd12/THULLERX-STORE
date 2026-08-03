@@ -1,5 +1,5 @@
 -- ======================================================================
--- THULLERX STORE - HUB OFICIAL BLOX FRUITS (WITH AUTO CODES V7)
+-- THULLERX STORE - HUB OFICIAL BLOX FRUITS (AUTO STATS & HIT FIXED V8)
 -- ======================================================================
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -8,7 +8,7 @@ local Window = Fluent:CreateWindow({
     Title = "THULLERX STORE",
     SubTitle = "Blox Fruits Quest Hub",
     TabWidth = 160,
-    Size = UDim2.fromOffset(630, 460),
+    Size = UDim2.fromOffset(630, 480),
     Acrylic = true,
     Theme = "Darker",
     MinimizeKey = Enum.KeyCode.K
@@ -54,6 +54,9 @@ _G.AutoFarmLevel = false
 _G.AutoChest = false
 _G.AutoSpinFruit = false
 _G.AutoStoreFruit = false
+_G.AutoStats = false
+_G.SelectedStat = "Melee"
+_G.StatPoints = 1
 _G.TweenSpeed = 250
 _G.CurrentTween = nil
 
@@ -61,8 +64,9 @@ local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local VirtualUser = game:GetService("VirtualUser")
 
--- Lista de Códigos do Blox Fruits
+-- Lista de PromoCodes
 local PromoCodes = {
     "KITT_RESET",
     "Sub2Fer999",
@@ -163,8 +167,8 @@ local function TakeQuest(qData)
     end)
 end
 
--- Ataque
-local function DoAttack()
+-- Sistema de Ataque e Dano Direto
+local function DoAttack(targetEnemy)
     pcall(function()
         local char = LocalPlayer.Character
         if char then
@@ -174,6 +178,14 @@ local function DoAttack()
                 if bTool then char.Humanoid:EquipTool(bTool) end
             else
                 tool:Activate()
+                -- Clique virtual + registro do Hit no Servidor
+                VirtualUser:CaptureController()
+                VirtualUser:Button1Down(Vector2.new(0,0))
+                
+                if targetEnemy and targetEnemy:FindFirstChild("HumanoidRootPart") then
+                    ReplicatedStorage.Remotes.CommF_:InvokeServer("RegisterAttack")
+                    ReplicatedStorage.Remotes.CommF_:InvokeServer("RegisterHit", targetEnemy.HumanoidRootPart)
+                end
             end
         end
     end)
@@ -191,7 +203,7 @@ local Tabs = {
 }
 
 -- ======================================================================
--- 1. AUTO FARM LEVEL & CODES
+-- 1. AUTO FARM LEVEL, STATS & CODES
 -- ======================================================================
 Tabs.Main:AddSection("Farm de Nível Automático")
 
@@ -204,12 +216,42 @@ Tabs.Main:AddToggle("AutoFarmLevelToggle", {
     end
 })
 
+Tabs.Main:AddSection("Estatísticas & Atributos (Auto Stats)")
+
+Tabs.Main:AddToggle("AutoStatsToggle", {
+    Title = "Ativar Distribution de Pontos",
+    Default = false,
+    Callback = function(Value)
+        _G.AutoStats = Value
+    end
+})
+
+Tabs.Main:AddDropdown("StatDropdown", {
+    Title = "Escolha o Atributo para Upar",
+    Values = {"Melee", "Defense", "Sword", "Demon Fruit"},
+    Default = "Melee",
+    Callback = function(Value)
+        _G.SelectedStat = Value
+    end
+})
+
+Tabs.Main:AddSlider("StatPointsSlider", {
+    Title = "Pontos por Aplicação",
+    Default = 1,
+    Min = 1,
+    Max = 10,
+    Rounding = 0,
+    Callback = function(Value)
+        _G.StatPoints = Value
+    end
+})
+
 Tabs.Main:AddSection("Recompensas & Promocodes")
 
--- Botão de Resgatar Todos os Códigos
+-- Botão de Resgatar Todos os Códigos (Corrigido)
 Tabs.Main:AddButton({
     Title = "Resgatar Todos os Códigos (Redeem All Codes)",
-    Description = "Aplica automaticamente todos os códigos de XP 2x e Beli ativas",
+    Description = "Aplica automaticamente todos os códigos de XP 2x e Beli ativos",
     Callback = function()
         Fluent:Notify({
             Title = "THULLERX STORE",
@@ -219,18 +261,30 @@ Tabs.Main:AddButton({
         task.spawn(function()
             for _, code in ipairs(PromoCodes) do
                 pcall(function()
-                    ReplicatedStorage.Remotes.CommF_:InvokeServer("RedeemCode", code)
+                    ReplicatedStorage.Remotes.CommF_:InvokeServer("RedeemCode", tostring(code))
                 end)
-                task.wait(0.2)
+                task.wait(0.3)
             end
             Fluent:Notify({
                 Title = "THULLERX STORE",
-                Content = "Todos os códigos foram resgatados com sucesso!",
-                Duration = 5
+                Content = "Processo finalizado!",
+                Duration = 4
             })
         end)
     end
 })
+
+-- Loop de Distribuição de Stats
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        if _G.AutoStats then
+            pcall(function()
+                ReplicatedStorage.Remotes.CommF_:InvokeServer("AddPoint", _G.SelectedStat, _G.StatPoints)
+            end)
+        end
+    end
+end)
 
 -- Loop do Auto Farm
 task.spawn(function()
@@ -270,7 +324,7 @@ task.spawn(function()
                             local mobPos = targetEnemy.HumanoidRootPart.CFrame * CFrame.new(0, 6, 0)
                             local tween = TweenTo(mobPos)
                             if tween then tween.Completed:Wait() end
-                            DoAttack()
+                            DoAttack(targetEnemy)
                         end
                     else
                         local islandPos = qData.QuestPos * CFrame.new(0, 20, 100)
