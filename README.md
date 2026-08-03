@@ -1,5 +1,5 @@
 -- ======================================================================
--- THULLERX STORE - HUB OFICIAL (AUTO CLICKER & COMBAT FIX)
+-- THULLERX STORE - HUB OFICIAL (TARGET BY NPC NAME)
 -- ======================================================================
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -51,6 +51,7 @@ StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 
 -- Variáveis Globais
 _G.AutoFarmLevel = false
+_G.TargetNPCName = ""
 _G.AutoChest = false
 _G.AutoSpinFruit = false
 _G.AutoStoreFruit = false
@@ -71,7 +72,7 @@ local VirtualUser = game:GetService("VirtualUser")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RedeemRemote = Remotes:WaitForChild("Redeem")
 
--- LISTA DE CÓDIGOS DA SUA FOTO
+-- LISTA DE CÓDIGOS
 local PromoCodes = {
     "EASTEREXP", "fudd10", "fudd10_V2", "Chandler", "BIGNEWS", 
     "KITT_RESET", "Sub2UncleKizaru", "SUB2GAMERROBOT_RESET1", 
@@ -88,13 +89,12 @@ local function StopMovement()
     end
 end
 
--- LÓGICA DE AUTO CLICKER E AUTO EQUIPAR ESTILO DE LUTA / ARMA
+-- LÓGICA DE AUTO CLICKER
 local function DoRealAutoClick()
     pcall(function()
         local char = LocalPlayer.Character
         if not char or not char:FindFirstChild("Humanoid") then return end
         
-        -- 1. Equipa o estilo de luta ou primeira ferramenta se a mão estiver vazia
         local currentTool = char:FindFirstChildOfClass("Tool")
         if not currentTool then
             for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
@@ -106,12 +106,10 @@ local function DoRealAutoClick()
             end
         end
         
-        -- 2. Ativa a ferramenta (Disparo interno do jogo)
         if currentTool then
             currentTool:Activate()
         end
 
-        -- 3. Simula o Clique Esquerdo REAL na tela (Auto Clicker Físico)
         local viewportSize = workspace.CurrentCamera.ViewportSize
         local centerX = viewportSize.X / 2
         local centerY = viewportSize.Y / 2
@@ -119,7 +117,6 @@ local function DoRealAutoClick()
         VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, true, game, 1)
         VirtualInputManager:SendMouseButtonEvent(centerX, centerY, 0, false, game, 1)
         
-        -- Método secundário de redundância
         VirtualUser:CaptureController()
         VirtualUser:ClickButton1(Vector2.new(centerX, centerY))
     end)
@@ -134,8 +131,17 @@ local Tabs = {
     Settings = Window:AddTab({ Title = "Aparência & Temas", Icon = "settings" })
 }
 
--- 1. AUTO FARM & CODES
+-- 1. SEÇÃO AUTO FARM E NPC TARGET
 Tabs.Main:AddSection("Farm de Nível Automático")
+
+Tabs.Main:AddInput("NPCNameInput", {
+    Title = "Nome Exato do NPC da Missão",
+    Default = "",
+    Placeholder = "Ex: Bandit, Monkey, Pirate...",
+    Callback = function(Text)
+        _G.TargetNPCName = Text
+    end
+})
 
 Tabs.Main:AddToggle("AutoFarmLevelToggle", {
     Title = "Ativar Auto Level / Ataque NPC",
@@ -146,13 +152,42 @@ Tabs.Main:AddToggle("AutoFarmLevelToggle", {
     end
 })
 
-Tabs.Main:AddSection("Recompensas & DLC Codes")
+-- 2. SEÇÃO AUTO STATS
+Tabs.Main:AddSection("Distribuição de Pontos (Auto Stats)")
+
+Tabs.Main:AddToggle("AutoStatsToggle", {
+    Title = "Ativar Auto Stats",
+    Default = false,
+    Callback = function(Value)
+        _G.AutoStats = Value
+    end
+})
+
+Tabs.Main:AddDropdown("StatDropdown", {
+    Title = "Atributo",
+    Values = {"Melee", "Defense", "Sword", "Demon Fruit"},
+    Default = "Melee",
+    Callback = function(Value)
+        _G.SelectedStat = Value
+    end
+})
+
+Tabs.Main:AddSlider("StatPointsSlider", {
+    Title = "Pontos por Vez",
+    Default = 1, Min = 1, Max = 10, Rounding = 0,
+    Callback = function(Value)
+        _G.StatPoints = Value
+    end
+})
+
+-- 3. SEÇÃO CÓDIGOS
+Tabs.Main:AddSection("Resgate de Códigos (Redeem Codes)")
 
 Tabs.Main:AddButton({
     Title = "Resgatar Todos os Códigos (DLC)",
-    Description = "Envia os códigos direto para ReplicatedStorage.Remotes.Redeem",
+    Description = "Executa a lista enviada via Remote Redeem",
     Callback = function()
-        Fluent:Notify({ Title = "THULLERX STORE", Content = "Iniciando resgate no remote Redeem...", Duration = 3 })
+        Fluent:Notify({ Title = "THULLERX STORE", Content = "Resgatando códigos...", Duration = 3 })
         task.spawn(function()
             for _, code in ipairs(PromoCodes) do
                 pcall(function()
@@ -164,84 +199,87 @@ Tabs.Main:AddButton({
                 end)
                 task.wait(0.4)
             end
-            Fluent:Notify({ Title = "THULLERX STORE", Content = "Todos os códigos enviados!", Duration = 4 })
+            Fluent:Notify({ Title = "THULLERX STORE", Content = "Códigos resgatados!", Duration = 4 })
         end)
     end
 })
 
--- 2. BAÚS
+-- DEMAIS ABAS
 Tabs.Chest:AddSection("Coleta Automática de Baús")
-Tabs.Chest:AddToggle("AutoChestToggle", {
-    Title = "Ativar Auto Farm Baús",
-    Default = false,
-    Callback = function(Value)
-        _G.AutoChest = Value
-        if not Value then StopMovement() end
-    end
-})
+Tabs.Chest:AddToggle("AutoChestToggle", { Title = "Ativar Auto Farm Baús", Default = false, Callback = function(V) _G.AutoChest = V end })
 
--- 3. MOVIMENTO
 Tabs.Movement:AddSection("Ajustes de Posição & Voo")
-Tabs.Movement:AddSlider("HeightSlider", {
-    Title = "Altura do Farm (Distância do NPC)",
-    Description = "Ajuste entre 0 e 3 para o soco/estilo de luta alcançar o NPC",
-    Default = 2, Min = 0, Max = 8, Rounding = 0,
-    Callback = function(Value) _G.FarmHeight = Value end
-})
+Tabs.Movement:AddSlider("HeightSlider", { Title = "Altura do Farm", Default = 2, Min = 0, Max = 8, Rounding = 0, Callback = function(V) _G.FarmHeight = V end })
+Tabs.Movement:AddSlider("SpeedSlider", { Title = "Velocidade (Tween Speed)", Default = 250, Min = 50, Max = 350, Rounding = 0, Callback = function(V) _G.TweenSpeed = V end })
 
-Tabs.Movement:AddSlider("SpeedSlider", {
-    Title = "Velocidade (Tween Speed)",
-    Default = 250, Min = 50, Max = 350, Rounding = 0,
-    Callback = function(Value) _G.TweenSpeed = Value end
-})
+Tabs.Fruit:AddSection("Ações de Frutas")
+Tabs.Fruit:AddToggle("AutoSpinToggle", { Title = "Auto Girar Fruta", Default = false, Callback = function(V) _G.AutoSpinFruit = V end })
+Tabs.Fruit:AddToggle("AutoStoreToggle", { Title = "Auto Guardar Frutas", Default = false, Callback = function(V) _G.AutoStoreFruit = V end })
 
--- 4. APARÊNCIA
 Tabs.Settings:AddSection("Temas e Cores do Menu")
-Tabs.Settings:AddDropdown("ThemeDropdown", {
-    Title = "Tema da Interface",
-    Values = {"Darker", "Dark", "Midnight", "Aqua", "Amethyst", "Rose"},
-    Default = "Darker",
-    Callback = function(Value) Fluent:SetTheme(Value) end
-})
+Tabs.Settings:AddDropdown("ThemeDropdown", { Title = "Tema da Interface", Values = {"Darker", "Dark", "Midnight", "Aqua", "Amethyst", "Rose"}, Default = "Darker", Callback = function(V) Fluent:SetTheme(V) end })
 
-local ColorPicker = Tabs.Settings:AddColorpicker("WatermarkColor", {
-    Title = "Cor da Marca d'Água & Borda",
-    Default = Color3.fromRGB(255, 50, 50)
-})
-
+local ColorPicker = Tabs.Settings:AddColorpicker("WatermarkColor", { Title = "Cor da Marca d'Água & Borda", Default = Color3.fromRGB(255, 50, 50) })
 ColorPicker:OnChanged(function()
     TextLabel.TextColor3 = ColorPicker.Value
     MainFrame.BorderColor3 = ColorPicker.Value
 end)
 
--- LOOP PRINCIPAL DO FARM & ATAQUE (AUTO CLICKER)
+-- LOOP AUTO STATS
 task.spawn(function()
     while true do
-        task.wait(0.05) -- Frequência rápida de ataques
+        task.wait(0.5)
+        if _G.AutoStats then
+            pcall(function()
+                Remotes:WaitForChild("CommF_"):InvokeServer("AddPoint", _G.SelectedStat, _G.StatPoints)
+            end)
+        end
+    end
+end)
+
+-- BUSCA NPC POR NOME FIEL
+local function GetTargetEnemy()
+    local closest = nil
+    local shortestDistance = math.huge
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    
+    if not hrp then return nil end
+    
+    local enemies = workspace:FindFirstChild("Enemies") or workspace
+    for _, enemy in pairs(enemies:GetChildren()) do
+        if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 and enemy:FindFirstChild("HumanoidRootPart") then
+            -- Se o usuário colocou o nome do NPC, filtra por ele
+            if _G.TargetNPCName == "" or string.find(string.lower(enemy.Name), string.lower(_G.TargetNPCName)) then
+                local dist = (enemy.HumanoidRootPart.Position - hrp.Position).Magnitude
+                if dist < shortestDistance then
+                    shortestDistance = dist
+                    closest = enemy
+                end
+            end
+        end
+    end
+    return closest
+end
+
+-- LOOP PRINCIPAL DO FARM & ATAQUE
+local currentTarget = nil
+task.spawn(function()
+    while true do
+        task.wait(0.05)
         if _G.AutoFarmLevel then
             pcall(function()
-                local enemies = workspace:FindFirstChild("Enemies") or workspace
-                local targetEnemy = nil
-
-                -- Procura qualquer NPC vivo perto no jogo
-                for _, enemy in pairs(enemies:GetChildren()) do
-                    if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 and enemy:FindFirstChild("HumanoidRootPart") then
-                        targetEnemy = enemy
-                        break
-                    end
+                if not currentTarget or not currentTarget:FindFirstChild("Humanoid") or currentTarget.Humanoid.Health <= 0 or not currentTarget:FindFirstChild("HumanoidRootPart") then
+                    currentTarget = GetTargetEnemy()
                 end
 
-                if targetEnemy then
-                    -- Posiciona colado no NPC na altura definida
-                    LocalPlayer.Character.HumanoidRootPart.CFrame = targetEnemy.HumanoidRootPart.CFrame * CFrame.new(0, _G.FarmHeight, 0)
-                    
-                    -- Faz o boneco olhar diretamente para o NPC para o golpe conectar
-                    workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, targetEnemy.HumanoidRootPart.Position)
-                    
-                    -- Dispara o Auto Clicker
+                if currentTarget and currentTarget:FindFirstChild("HumanoidRootPart") then
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = currentTarget.HumanoidRootPart.CFrame * CFrame.new(0, _G.FarmHeight, 0)
+                    workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, currentTarget.HumanoidRootPart.Position)
                     DoRealAutoClick()
                 end
             end)
+        else
+            currentTarget = nil
         end
     end
 end)
