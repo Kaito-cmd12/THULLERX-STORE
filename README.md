@@ -1,12 +1,12 @@
 -- ======================================================================
--- THULLERX STORE - HUB CORRIGIDO (CODES & DAMAGE FIX)
+-- THULLERX STORE - HUB OFICIAL (DLC CODES & COMBAT FIX)
 -- ======================================================================
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 
 local Window = Fluent:CreateWindow({
     Title = "THULLERX STORE",
-    SubTitle = "Blox Fruits Quest Hub",
+    SubTitle = "Quest Hub",
     TabWidth = 160,
     Size = UDim2.fromOffset(630, 480),
     Acrylic = true,
@@ -14,22 +14,64 @@ local Window = Fluent:CreateWindow({
     MinimizeKey = Enum.KeyCode.K
 })
 
+-- MARCA D'ÁGUA (THULLERX STORE)
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local TextLabel = Instance.new("TextLabel")
+local StatusLabel = Instance.new("TextLabel")
+
+ScreenGui.Parent = game:GetService("CoreGui")
+
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+MainFrame.BorderColor3 = Color3.fromRGB(255, 50, 50)
+MainFrame.BorderSizePixel = 2
+MainFrame.Position = UDim2.new(0.01, 0, 0.02, 0)
+MainFrame.Size = UDim2.new(0, 210, 0, 50)
+
+TextLabel.Parent = MainFrame
+TextLabel.BackgroundTransparency = 1
+TextLabel.Position = UDim2.new(0.05, 0, 0.1, 0)
+TextLabel.Size = UDim2.new(0, 190, 0, 20)
+TextLabel.Font = Enum.Font.SourceSansBold
+TextLabel.Text = "THULLERX STORE"
+TextLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+TextLabel.TextSize = 17.0
+TextLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+StatusLabel.Parent = MainFrame
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Position = UDim2.new(0.05, 0, 0.55, 0)
+StatusLabel.Size = UDim2.new(0, 190, 0, 18)
+StatusLabel.Font = Enum.Font.SourceSansItalic
+StatusLabel.Text = "Teclar [K] para Ocultar"
+StatusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+StatusLabel.TextSize = 13.0
+StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Variáveis Globais
+_G.AutoFarmLevel = false
+_G.AutoChest = false
+_G.AutoSpinFruit = false
+_G.AutoStoreFruit = false
+_G.AutoStats = false
+_G.SelectedStat = "Melee"
+_G.StatPoints = 1
+_G.TweenSpeed = 250
+_G.FarmHeight = 2
+_G.CurrentTween = nil
+
+local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
-local TweenService = game:GetService("TweenService")
 
--- Referência direta aos Remotes confirmados no seu Explorer
-local RemotesFolder = ReplicatedStorage:WaitForChild("Remotes")
-local CommF_ = RemotesFolder:WaitForChild("CommF_")
+-- REMOTE ENCONTRADO NA SUA IMAGEM: ReplicatedStorage.Remotes.Redeem
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local RedeemRemote = Remotes:WaitForChild("Redeem")
 
-_G.AutoFarmLevel = false
-_G.TweenSpeed = 250
-_G.FarmHeight = 3 -- Reduzido para 3 studs para garantir alcance da arma
-_G.CurrentTween = nil
-
--- LISTA DE CÓDIGOS DA SUA IMAGEM
+-- LISTA DE CÓDIGOS DA SUA FOTO
 local PromoCodes = {
     "EASTEREXP", "fudd10", "fudd10_V2", "Chandler", "BIGNEWS", 
     "KITT_RESET", "Sub2UncleKizaru", "SUB2GAMERROBOT_RESET1", 
@@ -61,13 +103,13 @@ local function TweenTo(targetCFrame)
     end
 end
 
--- SISTEMA DE ATAQUE (Garante equipar + simular clique + registrar no remote)
-local function ExecuteAttack()
+-- SISTEMA DE ATAQUE (FORÇA O CLIQUE NO NPC)
+local function DoFastAttack()
     pcall(function()
         local char = LocalPlayer.Character
         if not char then return end
         
-        -- 1. Equipa a primeira ferramenta do inventário se mão estiver vazia
+        -- Equipa a ferramenta
         local tool = char:FindFirstChildOfClass("Tool")
         if not tool then
             for _, item in pairs(LocalPlayer.Backpack:GetChildren()) do
@@ -77,51 +119,27 @@ local function ExecuteAttack()
                 end
             end
         else
-            -- 2. Dispara a animação/ativação local
             tool:Activate()
-            
-            -- 3. Dispara o Remote de ataque oficial do Blox Fruits
-            CommF_:InvokeServer("RegisterAttack")
-            
-            -- 4. Simula o clique esquerdo do mouse no motor do jogo
             VirtualUser:CaptureController()
-            VirtualUser:Button1Down(Vector2.new(1e4, 1e4))
-            VirtualUser:Button1Up(Vector2.new(1e4, 1e4))
+            VirtualUser:ClickButton1(Vector2.new(500, 500))
         end
     end)
 end
 
--- INTERFACE
+-- ABAS DA INTERFACE
 local Tabs = {
     Main = Window:AddTab({ Title = "Auto Farm", Icon = "sword" }),
-    Movement = Window:AddTab({ Title = "Ajustes", Icon = "move" })
+    Chest = Window:AddTab({ Title = "Baús", Icon = "box" }),
+    Movement = Window:AddTab({ Title = "Movimento", Icon = "move" }),
+    Fruit = Window:AddTab({ Title = "Frutas", Icon = "apple" }),
+    Settings = Window:AddTab({ Title = "Aparência & Temas", Icon = "settings" })
 }
 
-Tabs.Main:AddSection("Resgate de Códigos")
-
-Tabs.Main:AddButton({
-    Title = "Resgatar Todos os Códigos (Foto)",
-    Description = "Executa a lista enviada via CommF_",
-    Callback = function()
-        Fluent:Notify({ Title = "THULLERX STORE", Content = "Iniciando resgate dos códigos...", Duration = 3 })
-        
-        task.spawn(function()
-            for _, code in ipairs(PromoCodes) do
-                pcall(function()
-                    CommF_:InvokeServer("RedeemCode", tostring(code))
-                end)
-                task.wait(0.4) -- Delay de segurança para o servidor registrar
-            end
-            
-            Fluent:Notify({ Title = "THULLERX STORE", Content = "Processo de códigos finalizado!", Duration = 4 })
-        end)
-    end
-})
-
-Tabs.Main:AddSection("Farm de NPC")
+-- 1. AUTO FARM & CODES
+Tabs.Main:AddSection("Farm de Nível Automático")
 
 Tabs.Main:AddToggle("AutoFarmLevelToggle", {
-    Title = "Ativar Auto Farm / Ataque NPC",
+    Title = "Ativar Auto Level / Ataque NPC",
     Default = false,
     Callback = function(Value)
         _G.AutoFarmLevel = Value
@@ -129,47 +147,98 @@ Tabs.Main:AddToggle("AutoFarmLevelToggle", {
     end
 })
 
-Tabs.Movement:AddSlider("HeightSlider", {
-    Title = "Distância do NPC (Altura)",
-    Description = "Se o dano não registrar, reduza para 1 ou 2",
-    Default = 3,
-    Min = 0,
-    Max = 8,
-    Rounding = 0,
-    Callback = function(V) _G.FarmHeight = V end
+Tabs.Main:AddSection("Recompensas & DLC Codes")
+
+Tabs.Main:AddButton({
+    Title = "Resgatar Todos os Códigos (DLC)",
+    Description = "Envia os códigos direto para ReplicatedStorage.Remotes.Redeem",
+    Callback = function()
+        Fluent:Notify({ Title = "THULLERX STORE", Content = "Iniciando resgate no remote Redeem...", Duration = 3 })
+        task.spawn(function()
+            for _, code in ipairs(PromoCodes) do
+                pcall(function()
+                    -- Tenta chamar tanto InvokeServer quanto FireServer por garantia
+                    if RedeemRemote:IsA("RemoteFunction") then
+                        RedeemRemote:InvokeServer(code)
+                    elseif RedeemRemote:IsA("RemoteEvent") then
+                        RedeemRemote:FireServer(code)
+                    end
+                end)
+                task.wait(0.4)
+            end
+            Fluent:Notify({ Title = "THULLERX STORE", Content = "Todos os códigos enviados!", Duration = 4 })
+        end)
+    end
 })
 
--- LOOP PRINCIPAL DE ATAQUE E POSICIONAMENTO
+-- 2. BAÚS
+Tabs.Chest:AddSection("Coleta Automática de Baús")
+Tabs.Chest:AddToggle("AutoChestToggle", {
+    Title = "Ativar Auto Farm Baús",
+    Default = false,
+    Callback = function(Value)
+        _G.AutoChest = Value
+        if not Value then StopMovement() end
+    end
+})
+
+-- 3. MOVIMENTO
+Tabs.Movement:AddSection("Ajustes de Posição & Voo")
+Tabs.Movement:AddSlider("HeightSlider", {
+    Title = "Altura do Farm (Distância do NPC)",
+    Description = "Deixe em 1 ou 2 para o soco/espada acertar",
+    Default = 2, Min = 0, Max = 8, Rounding = 0,
+    Callback = function(Value) _G.FarmHeight = Value end
+})
+
+Tabs.Movement:AddSlider("SpeedSlider", {
+    Title = "Velocidade (Tween Speed)",
+    Default = 250, Min = 50, Max = 350, Rounding = 0,
+    Callback = function(Value) _G.TweenSpeed = Value end
+})
+
+-- 4. APARÊNCIA
+Tabs.Settings:AddSection("Temas e Cores do Menu")
+Tabs.Settings:AddDropdown("ThemeDropdown", {
+    Title = "Tema da Interface",
+    Values = {"Darker", "Dark", "Midnight", "Aqua", "Amethyst", "Rose"},
+    Default = "Darker",
+    Callback = function(Value) Fluent:SetTheme(Value) end
+})
+
+local ColorPicker = Tabs.Settings:AddColorpicker("WatermarkColor", {
+    Title = "Cor da Marca d'Água & Borda",
+    Default = Color3.fromRGB(255, 50, 50)
+})
+
+ColorPicker:OnChanged(function()
+    TextLabel.TextColor3 = ColorPicker.Value
+    MainFrame.BorderColor3 = ColorPicker.Value
+end)
+
+-- LOOP PRINCIPAL DO FARM & ATAQUE
 task.spawn(function()
     while true do
         task.wait(0.05)
         if _G.AutoFarmLevel then
             pcall(function()
-                local enemies = workspace:FindFirstChild("Enemies")
+                local enemies = workspace:FindFirstChild("Enemies") or workspace
                 local targetEnemy = nil
 
-                -- Encontra o NPC mais próximo no Workspace
-                if enemies then
-                    for _, enemy in pairs(enemies:GetChildren()) do
-                        if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 and enemy:FindFirstChild("HumanoidRootPart") then
-                            targetEnemy = enemy
-                            break
-                        end
+                -- Procura qualquer NPC vivo perto no jogo
+                for _, enemy in pairs(enemies:GetChildren()) do
+                    if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 and enemy:FindFirstChild("HumanoidRootPart") then
+                        targetEnemy = enemy
+                        break
                     end
                 end
 
-                -- Se encontrou o NPC, cola nele e ataca
                 if targetEnemy then
-                    local mobHrp = targetEnemy.HumanoidRootPart
-                    local playerHrp = LocalPlayer.Character.HumanoidRootPart
+                    -- Cola direto no NPC na altura definida
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = targetEnemy.HumanoidRootPart.CFrame * CFrame.new(0, _G.FarmHeight, 0)
                     
-                    -- Posiciona exatamente em cima do mob
-                    playerHrp.CFrame = mobHrp.CFrame * CFrame.new(0, _G.FarmHeight, 0)
-                    
-                    -- Ataca apenas se estiver bem perto
-                    if (playerHrp.Position - mobHrp.Position).Magnitude <= 15 then
-                        ExecuteAttack()
-                    end
+                    -- Ataca constantemente
+                    DoFastAttack()
                 end
             end)
         end
