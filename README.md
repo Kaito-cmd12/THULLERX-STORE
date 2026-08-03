@@ -1,5 +1,5 @@
 -- ======================================================================
--- THULLERX STORE - HUB OFICIAL BLOX FRUITS (DIRECT CLICK & HEIGHT V9)
+-- THULLERX STORE - HUB OFICIAL BLOX FRUITS (IMAGE CODES & FIX ATTACK V10)
 -- ======================================================================
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -58,7 +58,7 @@ _G.AutoStats = false
 _G.SelectedStat = "Melee"
 _G.StatPoints = 1
 _G.TweenSpeed = 250
-_G.FarmHeight = 6 -- Altura padrão do personagem acima do NPC
+_G.FarmHeight = 4 -- Altura ideal para acerto
 _G.CurrentTween = nil
 
 local TweenService = game:GetService("TweenService")
@@ -67,28 +67,32 @@ local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualUser = game:GetService("VirtualUser")
 
--- Lista de PromoCodes Ativos
+-- LISTA EXATA DE CÓDIGOS DA FOTO
 local PromoCodes = {
+    "EASTEREXP",
+    "fudd10",
+    "fudd10_V2",
+    "Chandler",
+    "BIGNEWS",
     "KITT_RESET",
+    "Sub2UncleKizaru",
+    "SUB2GAMERROBOT_RESET1",
     "Sub2Fer999",
     "Enyu_is_Pro",
-    "Magicbus",
     "JCWK",
-    "Starcodeheo",
-    "Bluxxy",
-    "fudd10_v2",
-    "FUDD10",
-    "BIGNEWS",
-    "THEGREATACE",
-    "SUB2GAMERROBOT_RESET1",
-    "SUB2GAMERROBOT_EXP1",
+    "StarcodeHEO",
+    "MagicBUS",
+    "KittGaming",
+    "Sub2CaptainMaui",
     "Sub2OfficialNoobie",
-    "Sub2UncleKizaru",
+    "TheGreatAce",
     "Sub2NoobMaster123",
     "Sub2Daigrock",
     "Axiore",
+    "StrawHatMaine",
     "TantaiGaming",
-    "STRAHATMAINE"
+    "Bluxxy",
+    "SUB2GAMERROBOT_EXP1"
 }
 
 -- TABELA DE QUESTS DO BLOX FRUITS (First Sea)
@@ -168,21 +172,22 @@ local function TakeQuest(qData)
     end)
 end
 
--- Sistema de Ataque e Clique Automático Perto do NPC
+-- Função de Ataque com Clique Esquerdo + Ativação
 local function DoAttack()
     pcall(function()
         local char = LocalPlayer.Character
         if char then
-            -- Equipar Arma se não estiver segurando
             local tool = char:FindFirstChildOfClass("Tool")
             if not tool then
                 local bTool = LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
-                if bTool then char.Humanoid:EquipTool(bTool) end
+                if bTool then 
+                    char.Humanoid:EquipTool(bTool) 
+                end
             else
-                -- Ativar ferramenta + clicar na tela
+                -- Ativação da ferramenta e simulação de clique esquerdo do mouse
                 tool:Activate()
                 VirtualUser:CaptureController()
-                VirtualUser:Button1Down(Vector2.new(0, 0))
+                VirtualUser:ClickButton1(Vector2.new(50, 50))
             end
         end
     end)
@@ -245,26 +250,26 @@ Tabs.Main:AddSlider("StatPointsSlider", {
 
 Tabs.Main:AddSection("Recompensas & Promocodes")
 
--- Botão de Resgatar Todos os Códigos (Método Duplo)
+-- Botão para resgatar todos os códigos da foto
 Tabs.Main:AddButton({
     Title = "Resgatar Todos os Códigos (Redeem All Codes)",
-    Description = "Aplica automaticamente todos os códigos de XP 2x e Beli ativos",
+    Description = "Resgata todos os códigos ativas exibidos na lista",
     Callback = function()
         Fluent:Notify({
             Title = "THULLERX STORE",
-            Content = "Resgatando códigos... Aguarde!",
+            Content = "Iniciando resgate dos códigos...",
             Duration = 3
         })
         task.spawn(function()
             for _, code in ipairs(PromoCodes) do
                 pcall(function()
-                    ReplicatedStorage.Remotes.CommF_:InvokeServer("RedeemCode", tostring(code))
+                    ReplicatedStorage.Remotes.CommF_:InvokeServer("RedeemCode", code)
                 end)
-                task.wait(0.2)
+                task.wait(0.3)
             end
             Fluent:Notify({
                 Title = "THULLERX STORE",
-                Content = "Todos os códigos foram aplicados!",
+                Content = "Todos os códigos foram resgatados!",
                 Duration = 4
             })
         end)
@@ -283,7 +288,7 @@ task.spawn(function()
     end
 end)
 
--- Loop do Auto Farm (Com Validação de NPC Próximo e Clicks)
+-- Loop do Auto Farm (Ataque Automático Apenas com NPC Próximo)
 task.spawn(function()
     while true do
         task.wait(0.1)
@@ -316,19 +321,24 @@ task.spawn(function()
                     end
 
                     if targetEnemy then
-                        -- Loop enquanto o mob estiver vivo e a quest ativa
+                        -- Loop enquanto o NPC estiver vivo
                         while _G.AutoFarmLevel and HasQuest() and targetEnemy and targetEnemy:FindFirstChild("Humanoid") and targetEnemy.Humanoid.Health > 0 do
                             task.wait(0.05)
-                            -- Posiciona o jogador com base na altura personalizada (_G.FarmHeight)
+                            
+                            -- Posiciona o jogador em cima do NPC de acordo com a altura
                             local mobPos = targetEnemy.HumanoidRootPart.CFrame * CFrame.new(0, _G.FarmHeight, 0)
                             local tween = TweenTo(mobPos)
                             if tween then tween.Completed:Wait() end
-                            
-                            -- Bate / Clica no NPC só enquanto estiver perto
-                            DoAttack()
+
+                            -- Ataca / Clica automaticamente no mouse enquanto o mob estiver próximo
+                            local playerPos = LocalPlayer.Character.HumanoidRootPart.Position
+                            local enemyPos = targetEnemy.HumanoidRootPart.Position
+                            if (playerPos - enemyPos).Magnitude <= 15 then
+                                DoAttack()
+                            end
                         end
                     else
-                        -- Sem NPC na área: vai para a área de spawn e NÃO clica
+                        -- Caso não haja NPC vivo, vai para a área de spawn
                         local islandPos = qData.QuestPos * CFrame.new(0, 20, 100)
                         local tween = TweenTo(islandPos)
                         if tween then tween.Completed:Wait() end
@@ -385,8 +395,8 @@ Tabs.Movement:AddSection("Ajustes de Posição & Voo")
 
 Tabs.Movement:AddSlider("HeightSlider", {
     Title = "Altura do Farm (Distância do NPC)",
-    Description = "Diminua se a sua espada/estilo de luta não alcançar o mob",
-    Default = 6,
+    Description = "Ajuste se o ataque da sua arma não estiver alcançando",
+    Default = 4,
     Min = 0,
     Max = 15,
     Rounding = 0,
@@ -426,7 +436,7 @@ end)
 task.spawn(function()
     while true do
         task.wait(1)
-        if _G.AutoStoreFruit then
+        if _G.AutoStoreFruit me
             pcall(function()
                 for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
                     if string.find(tool.Name, "Fruit") then
