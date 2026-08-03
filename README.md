@@ -1,5 +1,5 @@
 -- ======================================================================
--- THULLERX STORE - HUB OFICIAL (AUTO FARM + AUTO QUEST)
+-- THULLERX STORE - HUB OFICIAL (AUTO FARM + AUTO QUEST + AUTO CHEST)
 -- ======================================================================
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -125,11 +125,32 @@ local function HasQuest()
     return false
 end
 
+local function GetCurrentQuestTitle()
+    local pGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if pGui and pGui:FindFirstChild("Main") and pGui.Main:FindFirstChild("Quest") and pGui.Main.Quest.Visible then
+        return pGui.Main.Quest.Container.QuestTitle.Title.Text
+    end
+    return ""
+end
+
 local function StopMovement()
     if _G.CurrentTween then
         _G.CurrentTween:Cancel()
         _G.CurrentTween = nil
     end
+end
+
+local function TweenTo(targetCFrame)
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    
+    local hrp = char.HumanoidRootPart
+    local dist = (hrp.Position - targetCFrame.Position).Magnitude
+    local time = dist / _G.TweenSpeed
+
+    local tweenInfo = TweenInfo.new(time, Enum.EasingStyle.Linear)
+    _G.CurrentTween = TweenService:Create(hrp, tweenInfo, {CFrame = targetCFrame})
+    _G.CurrentTween:Play()
 end
 
 -- LÓGICA DE AUTO CLICKER E EQUIPAR ARMA
@@ -240,7 +261,14 @@ Tabs.Main:AddButton({
 
 -- DEMAIS ABAS
 Tabs.Chest:AddSection("Coleta Automática de Baús")
-Tabs.Chest:AddToggle("AutoChestToggle", { Title = "Ativar Auto Farm Baús", Default = false, Callback = function(V) _G.AutoChest = V end })
+Tabs.Chest:AddToggle("AutoChestToggle", { 
+    Title = "Ativar Auto Farm Baús", 
+    Default = false, 
+    Callback = function(V) 
+        _G.AutoChest = V 
+        if not V then StopMovement() end
+    end 
+})
 
 Tabs.Movement:AddSection("Ajustes de Posição & Voo")
 Tabs.Movement:AddSlider("HeightSlider", { Title = "Altura do Farm", Default = 2, Min = 0, Max = 8, Rounding = 0, Callback = function(V) _G.FarmHeight = V end })
@@ -250,14 +278,38 @@ Tabs.Fruit:AddSection("Ações de Frutas")
 Tabs.Fruit:AddToggle("AutoSpinToggle", { Title = "Auto Girar Fruta", Default = false, Callback = function(V) _G.AutoSpinFruit = V end })
 Tabs.Fruit:AddToggle("AutoStoreToggle", { Title = "Auto Guardar Frutas", Default = false, Callback = function(V) _G.AutoStoreFruit = V end })
 
-Tabs.Settings:AddSection("Temas e Cores do Menu")
-Tabs.Settings:AddDropdown("ThemeDropdown", { Title = "Tema da Interface", Values = {"Darker", "Dark", "Midnight", "Aqua", "Amethyst", "Rose"}, Default = "Darker", Callback = function(V) Fluent:SetTheme(V) end })
+-- 5. NOVAS CUSTOMIZAÇÕES DE INTERFACE
+Tabs.Settings:AddSection("Aparência do Menu")
 
-local ColorPicker = Tabs.Settings:AddColorpicker("WatermarkColor", { Title = "Cor da Marca d'Água & Borda", Default = Color3.fromRGB(255, 50, 50) })
+Tabs.Settings:AddDropdown("ThemeDropdown", { 
+    Title = "Tema do Menu", 
+    Values = {"Darker", "Dark", "Midnight", "Aqua", "Amethyst", "Rose"}, 
+    Default = "Darker", 
+    Callback = function(V) Fluent:SetTheme(V) end 
+})
+
+Tabs.Settings:AddDropdown("FontDropdown", {
+    Title = "Fonte da Marca d'Água",
+    Values = {"SourceSansBold", "FredokaOne", "GothamBold", "Arcade", "Bodoni"},
+    Default = "SourceSansBold",
+    Callback = function(V)
+        TextLabel.Font = Enum.Font[V]
+    end
+})
+
+local ColorPicker = Tabs.Settings:AddColorpicker("WatermarkColor", { Title = "Cor da Borda e Texto", Default = Color3.fromRGB(255, 50, 50) })
 ColorPicker:OnChanged(function()
     TextLabel.TextColor3 = ColorPicker.Value
     MainFrame.BorderColor3 = ColorPicker.Value
 end)
+
+Tabs.Settings:AddToggle("WatermarkVisibleToggle", {
+    Title = "Exibir Marca d'Água na Tela",
+    Default = true,
+    Callback = function(V)
+        MainFrame.Visible = V
+    end
+})
 
 -- LOOP AUTO STATS
 task.spawn(function()
@@ -271,8 +323,8 @@ task.spawn(function()
     end
 end)
 
--- BUSCA O NPC MAIS PRÓXIMO
-local function GetClosestEnemy()
+-- BUSCA INIMIGO DA MISSÃO ATUAL
+local function GetTargetEnemy(mobName)
     local closest = nil
     local shortestDistance = math.huge
     local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -282,10 +334,12 @@ local function GetClosestEnemy()
     local enemies = workspace:FindFirstChild("Enemies") or workspace
     for _, enemy in pairs(enemies:GetChildren()) do
         if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 and enemy:FindFirstChild("HumanoidRootPart") then
-            local dist = (enemy.HumanoidRootPart.Position - hrp.Position).Magnitude
-            if dist < shortestDistance then
-                shortestDistance = dist
-                closest = enemy
+            if string.find(string.lower(enemy.Name), string.lower(mobName)) then
+                local dist = (enemy.HumanoidRootPart.Position - hrp.Position).Magnitude
+                if dist < shortestDistance then
+                    shortestDistance = dist
+                    closest = enemy
+                end
             end
         end
     end
@@ -300,25 +354,76 @@ task.spawn(function()
         if _G.AutoFarmLevel then
             pcall(function()
                 local qData = GetQuestData()
-                
-                -- Se não tem quest, tenta pegar
-                if not HasQuest() and CommF_ then
-                    CommF_:InvokeServer("StartQuest", qData.Quest, qData.ID)
+                local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if not hrp then return end
+
+                -- 1. Se tem quest antiga de outra ilha, abandona
+                if HasQuest() and not string.find(string.lower(GetCurrentQuestTitle()), string.lower(qData.Mob)) then
+                    if CommF_ then
+                        CommF_:InvokeServer("AbandonQuest")
+                    end
                 end
 
-                -- Mantém o alvo atual até ele morrer
+                -- 2. Se não tem a quest atual, voa até o NPC da nova ilha e pega
+                if not HasQuest() then
+                    local distToNPC = (hrp.Position - qData.QuestPos.Position).Magnitude
+                    if distToNPC > 15 then
+                        TweenTo(qData.QuestPos)
+                    else
+                        StopMovement()
+                        if CommF_ then
+                            CommF_:InvokeServer("StartQuest", qData.Quest, qData.ID)
+                        end
+                    end
+                    return
+                end
+
+                -- 3. Já tem a quest: busca o Mob específico da missão
                 if not currentTarget or not currentTarget:FindFirstChild("Humanoid") or currentTarget.Humanoid.Health <= 0 or not currentTarget:FindFirstChild("HumanoidRootPart") then
-                    currentTarget = GetClosestEnemy()
+                    currentTarget = GetTargetEnemy(qData.Mob)
                 end
 
+                -- 4. Ataca o NPC sem travar a câmera
                 if currentTarget and currentTarget:FindFirstChild("HumanoidRootPart") then
-                    LocalPlayer.Character.HumanoidRootPart.CFrame = currentTarget.HumanoidRootPart.CFrame * CFrame.new(0, _G.FarmHeight, 0)
-                    workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, currentTarget.HumanoidRootPart.Position)
+                    hrp.CFrame = currentTarget.HumanoidRootPart.CFrame * CFrame.new(0, _G.FarmHeight, 0)
                     DoRealAutoClick()
                 end
             end)
         else
             currentTarget = nil
+        end
+    end
+end)
+
+-- LOOP DEDICADO DO AUTO CHEST
+task.spawn(function()
+    while true do
+        task.wait(0.1)
+        if _G.AutoChest and not _G.AutoFarmLevel then
+            pcall(function()
+                local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if not hrp then return end
+                
+                local closestChest = nil
+                local shortestDist = math.huge
+                
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if string.find(string.lower(obj.Name), "chest") and (obj:IsA("Model") or obj:IsA("BasePart")) then
+                        local chestPart = obj:IsA("BasePart") and obj or (obj:FindFirstChild("TouchInterest") and obj.TouchInterest.Parent or obj:FindFirstChildOfClass("BasePart"))
+                        if chestPart then
+                            local dist = (hrp.Position - chestPart.Position).Magnitude
+                            if dist < shortestDist then
+                                shortestDist = dist
+                                closestChest = chestPart
+                            end
+                        end
+                    end
+                end
+                
+                if closestChest then
+                    hrp.CFrame = closestChest.CFrame * CFrame.new(0, 2, 0)
+                end
+            end)
         end
     end
 end)
