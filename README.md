@@ -1,6 +1,6 @@
 -- ======================================================================
 -- THULLERX STORE - HUB OFICIAL (AUTO FARM + AUTO QUEST + AUTO CHEST)
--- VERSÃO CORRIGIDA COMPLETA: Auto Quest + Auto Chest Operacional
+-- VERSÃO CORRIGIDA: AUTO CHEST COM NOCLIP E BUSCA GLOBAL
 -- ======================================================================
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -159,17 +159,14 @@ local function GetCurrentQuestTitle()
 end
 
 local function CloseAnyDialogue()
-    local closed = false
     pcall(function()
         local pGui = LocalPlayer:FindFirstChild("PlayerGui")
         if pGui and pGui:FindFirstChild("Main") and pGui.Main:FindFirstChild("Dialogue") and pGui.Main.Dialogue.Visible then
             VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
             task.wait(0.05)
             VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
-            closed = true
         end
     end)
-    return closed
 end
 
 local function StopMovement()
@@ -422,77 +419,89 @@ task.spawn(function()
 end)
 
 -- ======================================================================
--- LOOP AUTO CHEST (ATUALIZADO E TOTALMENTE FUNCIONAL)
+-- LOOP AUTO CHEST (REFEITO DO ZERO - GARANTIDO PARA AMBOS OS SEAS)
 -- ======================================================================
-local CollectedChests = {}
-local ChestResetTime = tick()
+local IgnoreChests = {}
+
+-- Função de Noclip para não enganchar em paredes indo até os baús
+task.spawn(function()
+    game:GetService("RunService").Stepped:Connect(function()
+        if _G.AutoChest then
+            local char = LocalPlayer.Character
+            if char then
+                for _, part in pairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end
+    end)
+end)
+
+-- Busca todos os baús válidos do jogo inteiro
+local function GetClosestChest()
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil end
+
+    local closestChest = nil
+    local shortestDistance = math.huge
+
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("BasePart") and string.find(string.lower(v.Name), "chest") then
+            -- Verifica se o baú está ativo (não invisível e dentro do jogo)
+            if v.Parent and v.Transparency < 1 and not IgnoreChests[v] then
+                local dist = (hrp.Position - v.Position).Magnitude
+                if dist < shortestDistance then
+                    shortestDistance = dist
+                    closestChest = v
+                end
+            end
+        end
+    end
+    return closestChest
+end
 
 task.spawn(function()
     while true do
-        task.wait(0.2)
+        task.wait(0.1)
         if _G.AutoChest and not _G.AutoFarmLevel then
             pcall(function()
                 local char = LocalPlayer.Character
                 local hrp = char and char:FindFirstChild("HumanoidRootPart")
                 if not hrp then return end
 
-                if tick() - ChestResetTime > 45 then
-                    CollectedChests = {}
-                    ChestResetTime = tick()
-                end
+                local chest = GetClosestChest()
 
-                if _G.ChestTarget then
-                    local part = _G.ChestTarget
-                    if not part.Parent or CollectedChests[part] or (part:IsA("BasePart") and part.Transparency >= 1) then
-                        _G.ChestTarget = nil
-                    end
-                end
+                if chest and chest.Parent then
+                    local chestCFrame = chest.CFrame
+                    local dist = (hrp.Position - chest.Position).Magnitude
 
-                if not _G.ChestTarget then
-                    local shortestDist = math.huge
-                    local found = nil
-                    local searchFolder = workspace:FindFirstChild("Map") or workspace
-
-                    for _, obj in pairs(searchFolder:GetDescendants()) do
-                        if string.find(string.lower(obj.Name), "chest") then
-                            local part = obj:IsA("BasePart") and obj or obj:FindFirstChildOfClass("BasePart")
-                            if part and not CollectedChests[part] and part.Transparency < 1 then
-                                local dist = (hrp.Position - part.Position).Magnitude
-                                if dist < shortestDist then
-                                    shortestDist = dist
-                                    found = part
-                                end
-                            end
-                        end
-                    end
-
-                    _G.ChestTarget = found
-                    if found then
-                        TweenTo(found.CFrame)
-                    end
-                end
-
-                if _G.ChestTarget then
-                    local part = _G.ChestTarget
-                    local dist = (hrp.Position - part.Position).Magnitude
-
-                    if dist <= 6 then
-                        firetouchinterest(hrp, part, 0)
-                        task.wait(0.05)
-                        firetouchinterest(hrp, part, 1)
-
-                        CollectedChests[part] = true
-                        _G.ChestTarget = nil
-                        StopMovement()
+                    -- Se estiver longe, vai de Tween
+                    if dist > 10 then
+                        TweenTo(chestCFrame)
                     else
-                        if not _G.CurrentTween then
-                            TweenTo(part.CFrame)
+                        -- Se estiver perto, teleporta em cima e aciona toque
+                        StopMovement()
+                        hrp.CFrame = chestCFrame
+                        
+                        -- Dispara evento de toque no baú
+                        if firetouchinterest then
+                            firetouchinterest(hrp, chest, 0)
+                            task.wait(0.1)
+                            firetouchinterest(hrp, chest, 1)
                         end
+
+                        IgnoreChests[chest] = true
+                        task.wait(0.2)
                     end
+                else
+                    StopMovement()
+                    -- Limpa a lista de baús ignorados caso não ache nenhum no mapa
+                    IgnoreChests = {}
+                    task.wait(1)
                 end
             end)
-        else
-            _G.ChestTarget = nil
         end
     end
 end)
