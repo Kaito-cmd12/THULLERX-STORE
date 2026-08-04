@@ -1,5 +1,5 @@
 -- ======================================================================
--- THULLERX STORE - CHALICE FINDER (DETECTOR DE CÁLICE SAGRADO)
+-- THULLERX STORE - CHALICE FINDER (VERSÃO SEM CRASH / OTIMIZADA)
 -- ======================================================================
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -14,7 +14,7 @@ local Window = Fluent:CreateWindow({
     MinimizeKey = Enum.KeyCode.K
 })
 
--- MARCA D'ÁGUA (THULLERX STORE)
+-- MARCA D'ÁGUA
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local TextLabel = Instance.new("TextLabel")
@@ -44,7 +44,7 @@ StatusLabel.BackgroundTransparency = 1
 StatusLabel.Position = UDim2.new(0.05, 0, 0.55, 0)
 StatusLabel.Size = UDim2.new(0, 190, 0, 18)
 StatusLabel.Font = Enum.Font.SourceSansItalic
-StatusLabel.Text = "Status: Aguardando Checagem"
+StatusLabel.Text = "Status: Pronto"
 StatusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
 StatusLabel.TextSize = 13.0
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -53,82 +53,87 @@ local Tabs = {
     Main = Window:AddTab({ Title = "Detector", Icon = "search" })
 }
 
--- FUNÇÃO DE VERIFICAÇÃO DO CÁLICE
+-- BUSCA OTIMIZADA (SEM TRAVAR O JOGO)
 local function CheckForChalice()
     local found = false
-    local chaliceObject = nil
+    local itemName = ""
 
-    -- 1. Procura em itens jogados no chão pelo mapa
-    for _, obj in pairs(workspace:GetDescendants()) do
+    -- 1. Checa apenas os itens caídos diretamente no workspace (sem descer a árvore inteira)
+    for _, obj in pairs(workspace:GetChildren()) do
         if obj:IsA("Tool") or obj:IsA("Model") then
-            if string.find(string.lower(obj.Name), "chalice") or string.find(string.lower(obj.Name), "god's chalice") then
+            local name = string.lower(obj.Name)
+            if string.find(name, "chalice") or string.find(name, "god") then
                 found = true
-                chaliceObject = obj
+                itemName = obj.Name
                 break
             end
         end
     end
 
-    -- 2. Procura no inventário dos jogadores no servidor
+    -- 2. Checa inventário e mão dos jogadores
     if not found then
         for _, player in pairs(game:GetService("Players"):GetPlayers()) do
             local backpack = player:FindFirstChild("Backpack")
             local char = player.Character
-            
-            if backpack and (backpack:FindFirstChild("God's Chalice") or backpack:FindFirstChild("Chalice")) then
-                found = true
-                break
-            elseif char and (char:FindFirstChild("God's Chalice") or char:FindFirstChild("Chalice")) then
-                found = true
-                break
+
+            if backpack then
+                for _, item in pairs(backpack:GetChildren()) do
+                    if string.find(string.lower(item.Name), "chalice") then
+                        found = true
+                        itemName = item.Name
+                        break
+                    end
+                end
             end
+
+            if not found and char then
+                for _, item in pairs(char:GetChildren()) do
+                    if item:IsA("Tool") and string.find(string.lower(item.Name), "chalice") then
+                        found = true
+                        itemName = item.Name
+                        break
+                    end
+                end
+            end
+
+            if found then break end
+            task.wait() -- Micro-pausa entre checagens de jogadores para não sobrecarregar
         end
     end
 
-    -- Atualiza a interface e dispara o aviso
+    -- Retorno na interface
     if found then
         StatusLabel.Text = "CÁLICE ENCONTRADO!"
         StatusLabel.TextColor3 = Color3.fromRGB(50, 255, 50)
-        
-        Fluent:Notify({
-            Title = "THULLERX STORE",
-            Content = "O CÁLICE SAGRADO ESTÁ NO SERVIDO!",
-            Duration = 10
-        })
+        Fluent:Notify({ Title = "THULLERX STORE", Content = "Cálice detectado: " .. itemName, Duration = 8 })
     else
         StatusLabel.Text = "Cálice: Não encontrado"
         StatusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-        
-        Fluent:Notify({
-            Title = "THULLERX STORE",
-            Content = "Nenhum Cálice encontrado neste servidor.",
-            Duration = 5
-        })
+        Fluent:Notify({ Title = "THULLERX STORE", Content = "Nenhum Cálice neste servidor.", Duration = 4 })
     end
 end
 
--- INTERFACE
-Tabs.Main:AddSection("Verificação do Cálice Sagrado")
+Tabs.Main:AddSection("Detector de Cálice Sagrado")
 
 Tabs.Main:AddButton({
-    Title = "Checar Cálice no Servidor",
+    Title = "Checar Cálice Agora",
     Callback = function()
         CheckForChalice()
     end
 })
 
 Tabs.Main:AddToggle("AutoCheckToggle", {
-    Title = "Aviso Automático em Tempo Real",
+    Title = "Verificação Automática (10s)",
     Default = false,
     Callback = function(Value)
         _G.AutoCheckChalice = Value
     end
 })
 
--- LOOP DE CHECAGEM AUTOMÁTICA
+-- Loop seguro com intervalo de 10 segundos
 task.spawn(function()
     while true do
-        task.wait(5)
+        task.wait(10)
         if _G.AutoCheckChalice then
             CheckForChalice()
         end
