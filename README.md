@@ -1,6 +1,6 @@
 -- ======================================================================
 -- THULLERX STORE - HUB OFICIAL (AUTO FARM + AUTO QUEST + AUTO CHEST)
--- VERSÃO CORRIGIDA: Auto Quest (máquina de estados) + Auto Chest (sem travar)
+-- VERSÃO CORRIGIDA COMPLETA: Auto Quest + Auto Chest Operacional
 -- ======================================================================
 
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
@@ -62,12 +62,12 @@ _G.TweenSpeed = 250
 _G.FarmHeight = 2
 _G.CurrentTween = nil
 
--- NOVO: estado da máquina de Auto Quest
-_G.QuestState = "IDLE" -- IDLE, GOTO_NPC, REQUEST, CONFIRM, HUNT
+-- Estado da máquina de Auto Quest
+_G.QuestState = "IDLE"
 _G.QuestRetryCount = 0
 _G.QuestRetryTime = 0
 
--- NOVO: alvo atual do Auto Chest
+-- Alvo atual do Auto Chest
 _G.ChestTarget = nil
 
 local TweenService = game:GetService("TweenService")
@@ -75,7 +75,6 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local VirtualInputManager = game:GetService("VirtualInputManager")
-local VirtualUser = game:GetService("VirtualUser")
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RedeemRemote = Remotes:WaitForChild("Redeem")
@@ -112,25 +111,25 @@ local LevelData = {
     {Min = 1,   Max = 9,   Quest = "BanditQuest1",       ID = 1, Mob = "Bandit",          QuestPos = CFrame.new(1059.3, 16.4, 1548.6)},
     {Min = 10,  Max = 14,  Quest = "JungleQuest",        ID = 1, Mob = "Monkey",          QuestPos = CFrame.new(-1598.4, 36.8, 153.8)},
     {Min = 15,  Max = 19,  Quest = "JungleQuest",        ID = 2, Mob = "Gorilla",         QuestPos = CFrame.new(-1598.4, 36.8, 153.8)},
-    {Min = 20,  Max = 29,  Quest = "JungleQuest",        ID = 3, Mob = "Gorilla King",     QuestPos = CFrame.new(-1598.4, 36.8, 153.8)},
-    {Min = 30,  Max = 39,  Quest = "BuggyQuest1",        ID = 1, Mob = "Pirate",          QuestPos = CFrame.new(-1141.0, 4.7, 3856.2)},
-    {Min = 40,  Max = 59,  Quest = "BuggyQuest1",        ID = 2, Mob = "Brute",           QuestPos = CFrame.new(-1141.0, 4.7, 3856.2)},
-    {Min = 60,  Max = 74,  Quest = "DesertQuest",        ID = 1, Mob = "Desert Bandit",   QuestPos = CFrame.new(897.0, 6.4, 4388.0)},
-    {Min = 75,  Max = 89,  Quest = "DesertQuest",        ID = 2, Mob = "Desert Officer",  QuestPos = CFrame.new(897.0, 6.4, 4388.0)},
-    {Min = 90,  Max = 99,  Quest = "SnowQuest",          ID = 1, Mob = "Snow Bandit",     QuestPos = CFrame.new(1385.8, 87.2, -1298.6)},
-    {Min = 100, Max = 119, Quest = "SnowQuest",          ID = 2, Mob = "Snowman",         QuestPos = CFrame.new(1385.8, 87.2, -1298.6)},
-    {Min = 120, Max = 149, Quest = "MarineQuest2",       ID = 1, Mob = "Chief Petty Officer", QuestPos = CFrame.new(-5036.0, 28.6, 4324.7)},
-    {Min = 150, Max = 174, Quest = "SkyQuest",           ID = 1, Mob = "Sky Bandit",      QuestPos = CFrame.new(-4839.5, 717.5, -2620.5)},
-    {Min = 175, Max = 189, Quest = "SkyQuest",           ID = 2, Mob = "Dark Master",     QuestPos = CFrame.new(-4839.5, 717.5, -2620.5)},
-    {Min = 190, Max = 209, Quest = "PrisonerQuest",      ID = 1, Mob = "Prisoner",        QuestPos = CFrame.new(485.6, 4.4, 735.6)},
-    {Min = 210, Max = 249, Quest = "PrisonerQuest",      ID = 2, Mob = "Dangerous Prisoner", QuestPos = CFrame.new(485.6, 4.4, 735.6)},
-    {Min = 250, Max = 274, Quest = "ColosseumQuest",     ID = 1, Mob = "Toga Warrior",    QuestPos = CFrame.new(-1820.2, 7.2, -2745.8)},
-    {Min = 275, Max = 299, Quest = "ColosseumQuest",     ID = 2, Mob = "Gladiator",       QuestPos = CFrame.new(-1820.2, 7.2, -2745.8)},
-    {Min = 300, Max = 324, Quest = "MagmaQuest",         ID = 1, Mob = "Military Soldier", QuestPos = CFrame.new(-5315.8, 12.2, 8515.2)},
-    {Min = 325, Max = 374, Quest = "MagmaQuest",         ID = 2, Mob = "Military Spy",    QuestPos = CFrame.new(-5315.8, 12.2, 8515.2)},
-    {Min = 375, Max = 399, Quest = "FishmanQuest",       ID = 1, Mob = "Fishman Warrior", QuestPos = CFrame.new(61122.5, 18.4, 1569.3)},
-    {Min = 400, Max = 449, Quest = "FishmanQuest",       ID = 2, Mob = "Fishman Commando", QuestPos = CFrame.new(61122.5, 18.4, 1569.3)},
-    {Min = 450, Max = 699, Quest = "SkyQuest2",          ID = 1, Mob = "God's Guard",     QuestPos = CFrame.new(-4720.4, 845.2, -1950.5)}
+    {Min = 20,  Max = 29,  Quest = "JungleQuest",        ID = 3, Mob = "Gorilla King",    QuestPos = CFrame.new(-1598.4, 36.8, 153.8)},
+    {Min = 30,  Max = 39,  Quest = "BuggyQuest1",       ID = 1, Mob = "Pirate",          QuestPos = CFrame.new(-1141.0, 4.7, 3856.2)},
+    {Min = 40,  Max = 59,  Quest = "BuggyQuest1",       ID = 2, Mob = "Brute",           QuestPos = CFrame.new(-1141.0, 4.7, 3856.2)},
+    {Min = 60,  Max = 74,  Quest = "DesertQuest",       ID = 1, Mob = "Desert Bandit",   QuestPos = CFrame.new(897.0, 6.4, 4388.0)},
+    {Min = 75,  Max = 89,  Quest = "DesertQuest",       ID = 2, Mob = "Desert Officer",  QuestPos = CFrame.new(897.0, 6.4, 4388.0)},
+    {Min = 90,  Max = 99,  Quest = "SnowQuest",         ID = 1, Mob = "Snow Bandit",     QuestPos = CFrame.new(1385.8, 87.2, -1298.6)},
+    {Min = 100, Max = 119, Quest = "SnowQuest",         ID = 2, Mob = "Snowman",         QuestPos = CFrame.new(1385.8, 87.2, -1298.6)},
+    {Min = 120, Max = 149, Quest = "MarineQuest2",      ID = 1, Mob = "Chief Petty Officer", QuestPos = CFrame.new(-5036.0, 28.6, 4324.7)},
+    {Min = 150, Max = 174, Quest = "SkyQuest",          ID = 1, Mob = "Sky Bandit",      QuestPos = CFrame.new(-4839.5, 717.5, -2620.5)},
+    {Min = 175, Max = 189, Quest = "SkyQuest",          ID = 2, Mob = "Dark Master",     QuestPos = CFrame.new(-4839.5, 717.5, -2620.5)},
+    {Min = 190, Max = 209, Quest = "PrisonerQuest",     ID = 1, Mob = "Prisoner",        QuestPos = CFrame.new(485.6, 4.4, 735.6)},
+    {Min = 210, Max = 249, Quest = "PrisonerQuest",     ID = 2, Mob = "Dangerous Prisoner", QuestPos = CFrame.new(485.6, 4.4, 735.6)},
+    {Min = 250, Max = 274, Quest = "ColosseumQuest",    ID = 1, Mob = "Toga Warrior",    QuestPos = CFrame.new(-1820.2, 7.2, -2745.8)},
+    {Min = 275, Max = 299, Quest = "ColosseumQuest",    ID = 2, Mob = "Gladiator",       QuestPos = CFrame.new(-1820.2, 7.2, -2745.8)},
+    {Min = 300, Max = 324, Quest = "MagmaQuest",        ID = 1, Mob = "Military Soldier", QuestPos = CFrame.new(-5315.8, 12.2, 8515.2)},
+    {Min = 325, Max = 374, Quest = "MagmaQuest",        ID = 2, Mob = "Military Spy",    QuestPos = CFrame.new(-5315.8, 12.2, 8515.2)},
+    {Min = 375, Max = 399, Quest = "FishmanQuest",      ID = 1, Mob = "Fishman Warrior", QuestPos = CFrame.new(61122.5, 18.4, 1569.3)},
+    {Min = 400, Max = 449, Quest = "FishmanQuest",      ID = 2, Mob = "Fishman Commando", QuestPos = CFrame.new(61122.5, 18.4, 1569.3)},
+    {Min = 450, Max = 699, Quest = "SkyQuest2",         ID = 1, Mob = "God's Guard",     QuestPos = CFrame.new(-4720.4, 845.2, -1950.5)}
 }
 
 local function GetQuestData()
@@ -159,7 +158,6 @@ local function GetCurrentQuestTitle()
     return ""
 end
 
--- NOVO: fecha qualquer caixa de diálogo aberta (ex: "Por favor selecione uma missão")
 local function CloseAnyDialogue()
     local closed = false
     pcall(function()
@@ -218,7 +216,7 @@ local function DoRealAutoClick()
     end)
 end
 
--- CRIAÇÃO DAS ABAS COMPLETAS
+-- CRIAÇÃO DAS ABAS
 local Tabs = {
     Main = Window:AddTab({ Title = "Auto Farm", Icon = "sword" }),
     Chest = Window:AddTab({ Title = "Baús", Icon = "box" }),
@@ -338,11 +336,7 @@ local function GetTargetEnemy(mobName)
     return closest
 end
 
--- ======================================================================
--- LOOP AUTO FARM / AUTO QUEST (CORRIGIDO COM MÁQUINA DE ESTADOS)
--- Estados: GOTO_NPC -> REQUEST -> CONFIRM -> HUNT
--- Isso evita o travamento no diálogo e o loop infinito de teleporte.
--- ======================================================================
+-- LOOP AUTO FARM / AUTO QUEST
 local currentTarget = nil
 task.spawn(function()
     while true do
@@ -353,10 +347,8 @@ task.spawn(function()
                 local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                 if not hrp then return end
 
-                -- Sempre tenta fechar qualquer diálogo travado na tela primeiro
                 CloseAnyDialogue()
 
-                -- Se a quest ativa não é a esperada para o nível atual, abandona e reinicia o fluxo
                 if HasQuest() and not string.find(string.lower(GetCurrentQuestTitle()), string.lower(qData.Mob)) then
                     if CommF_ then pcall(function() CommF_:InvokeServer("AbandonQuest") end) end
                     currentTarget = nil
@@ -365,7 +357,6 @@ task.spawn(function()
                     return
                 end
 
-                -- Se já tem a quest certa ativa, pula direto pra caçada
                 if HasQuest() then
                     _G.QuestState = "HUNT"
                 elseif _G.QuestState ~= "REQUEST" and _G.QuestState ~= "CONFIRM" then
@@ -392,14 +383,12 @@ task.spawn(function()
                     _G.QuestState = "CONFIRM"
 
                 elseif _G.QuestState == "CONFIRM" then
-                    -- Dá tempo do servidor confirmar e fecha qualquer diálogo residual
                     CloseAnyDialogue()
                     if HasQuest() and string.find(string.lower(GetCurrentQuestTitle()), string.lower(qData.Mob)) then
                         _G.QuestState = "HUNT"
                     elseif tick() - _G.QuestRetryTime > 1.5 then
                         _G.QuestRetryCount = _G.QuestRetryCount + 1
                         if _G.QuestRetryCount >= 5 then
-                            -- Depois de várias falhas, volta pro NPC e recomeça do zero
                             _G.QuestState = "GOTO_NPC"
                             _G.QuestRetryCount = 0
                         else
@@ -433,45 +422,41 @@ task.spawn(function()
 end)
 
 -- ======================================================================
--- LOOP AUTO CHEST (CORRIGIDO - SEM WHILE BLOQUEANTE, SEM MISMATCH DE CHAVE)
--- Agora usa a mesma "part" tanto pra procurar quanto pra marcar como coletado,
--- e reseta a lista periodicamente pra permitir re-coleta de baús que respawnam.
+-- LOOP AUTO CHEST (ATUALIZADO E TOTALMENTE FUNCIONAL)
 -- ======================================================================
 local CollectedChests = {}
 local ChestResetTime = tick()
 
 task.spawn(function()
     while true do
-        task.wait(0.1)
+        task.wait(0.2)
         if _G.AutoChest and not _G.AutoFarmLevel then
             pcall(function()
-                local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                local char = LocalPlayer.Character
+                local hrp = char and char:FindFirstChild("HumanoidRootPart")
                 if not hrp then return end
 
-                -- Reset periódico: baús podem respawnar, então libera a lista de vez em quando
-                if tick() - ChestResetTime > 30 then
+                if tick() - ChestResetTime > 45 then
                     CollectedChests = {}
                     ChestResetTime = tick()
                 end
 
-                -- Valida se o alvo atual ainda existe e está ativo
                 if _G.ChestTarget then
                     local part = _G.ChestTarget
-                    if not part.Parent or CollectedChests[part] or part.Transparency >= 1 then
+                    if not part.Parent or CollectedChests[part] or (part:IsA("BasePart") and part.Transparency >= 1) then
                         _G.ChestTarget = nil
                     end
                 end
 
-                -- Sem alvo? procura o baú ativo e visível mais próximo
                 if not _G.ChestTarget then
                     local shortestDist = math.huge
                     local found = nil
+                    local searchFolder = workspace:FindFirstChild("Map") or workspace
 
-                    for _, obj in pairs(workspace:GetDescendants()) do
+                    for _, obj in pairs(searchFolder:GetDescendants()) do
                         if string.find(string.lower(obj.Name), "chest") then
                             local part = obj:IsA("BasePart") and obj or obj:FindFirstChildOfClass("BasePart")
-                            -- Baú "ativo": visível e ainda colidível (baú já coletado costuma perder CanCollide)
-                            if part and not CollectedChests[part] and part.Transparency < 1 and part.CanCollide then
+                            if part and not CollectedChests[part] and part.Transparency < 1 then
                                 local dist = (hrp.Position - part.Position).Magnitude
                                 if dist < shortestDist then
                                     shortestDist = dist
@@ -483,19 +468,26 @@ task.spawn(function()
 
                     _G.ChestTarget = found
                     if found then
-                        TweenTo(found.CFrame * CFrame.new(0, 2, 0))
+                        TweenTo(found.CFrame)
                     end
                 end
 
-                -- Com alvo definido: checa se já chegou perto o suficiente pra coletar
                 if _G.ChestTarget then
                     local part = _G.ChestTarget
                     local dist = (hrp.Position - part.Position).Magnitude
-                    if dist <= 4 then
-                        -- Marca ESSA part especificamente como coletada (mesma chave usada na busca)
+
+                    if dist <= 6 then
+                        firetouchinterest(hrp, part, 0)
+                        task.wait(0.05)
+                        firetouchinterest(hrp, part, 1)
+
                         CollectedChests[part] = true
                         _G.ChestTarget = nil
                         StopMovement()
+                    else
+                        if not _G.CurrentTween then
+                            TweenTo(part.CFrame)
+                        end
                     end
                 end
             end)
