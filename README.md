@@ -1,86 +1,104 @@
 -- ======================================================================
--- THULLERX STORE - CHALICE FINDER (VERSÃO SEM CRASH / OTIMIZADA)
+-- THULLERX STORE - CHALICE FINDER (ESPECIAL PARA SOLARA - PC)
 -- ======================================================================
 
-local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
 
-local Window = Fluent:CreateWindow({
-    Title = "THULLERX STORE",
-    SubTitle = "Chalice Finder",
-    TabWidth = 160,
-    Size = UDim2.fromOffset(500, 320),
-    Acrylic = true,
-    Theme = "Darker",
-    MinimizeKey = Enum.KeyCode.K
-})
+-- Limpa interface antiga para não duplicar
+if CoreGui:FindFirstChild("ThullerxChalicePC") then
+    CoreGui.ThullerxChalicePC:Destroy()
+end
 
--- MARCA D'ÁGUA
+-- Interface Nativa Ultra-Rápida
 local ScreenGui = Instance.new("ScreenGui")
-local MainFrame = Instance.new("Frame")
-local TextLabel = Instance.new("TextLabel")
+ScreenGui.Name = "ThullerxChalicePC"
+ScreenGui.Parent = CoreGui
+
+local Frame = Instance.new("Frame")
+Frame.Parent = ScreenGui
+Frame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+Frame.BorderColor3 = Color3.fromRGB(255, 50, 50)
+Frame.BorderSizePixel = 2
+Frame.Position = UDim2.new(0.02, 0, 0.25, 0)
+Frame.Size = UDim2.new(0, 240, 0, 160)
+Frame.Active = true
+Frame.Draggable = true
+
+local Title = Instance.new("TextLabel")
+Title.Parent = Frame
+Title.Size = UDim2.new(1, 0, 0, 32)
+Title.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+Title.Text = "THULLERX STORE [SOLARA]"
+Title.TextColor3 = Color3.fromRGB(255, 50, 50)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 16
+
 local StatusLabel = Instance.new("TextLabel")
-
-ScreenGui.Parent = game:GetService("CoreGui")
-
-MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-MainFrame.BorderColor3 = Color3.fromRGB(255, 50, 50)
-MainFrame.BorderSizePixel = 2
-MainFrame.Position = UDim2.new(0.01, 0, 0.02, 0)
-MainFrame.Size = UDim2.new(0, 210, 0, 50)
-
-TextLabel.Parent = MainFrame
-TextLabel.BackgroundTransparency = 1
-TextLabel.Position = UDim2.new(0.05, 0, 0.1, 0)
-TextLabel.Size = UDim2.new(0, 190, 0, 20)
-TextLabel.Font = Enum.Font.SourceSansBold
-TextLabel.Text = "THULLERX STORE"
-TextLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-TextLabel.TextSize = 17.0
-TextLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-StatusLabel.Parent = MainFrame
+StatusLabel.Parent = Frame
+StatusLabel.Position = UDim2.new(0, 0, 0.25, 0)
+StatusLabel.Size = UDim2.new(1, 0, 0, 30)
 StatusLabel.BackgroundTransparency = 1
-StatusLabel.Position = UDim2.new(0.05, 0, 0.55, 0)
-StatusLabel.Size = UDim2.new(0, 190, 0, 18)
-StatusLabel.Font = Enum.Font.SourceSansItalic
-StatusLabel.Text = "Status: Pronto"
-StatusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-StatusLabel.TextSize = 13.0
-StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+StatusLabel.Text = "Status: Aguardando..."
+StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+StatusLabel.Font = Enum.Font.SourceSans
+StatusLabel.TextSize = 14
 
-local Tabs = {
-    Main = Window:AddTab({ Title = "Detector", Icon = "search" })
-}
+local CheckButton = Instance.new("TextButton")
+CheckButton.Parent = Frame
+CheckButton.Position = UDim2.new(0.08, 0, 0.5, 0)
+CheckButton.Size = UDim2.new(0.84, 0, 0, 32)
+CheckButton.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
+CheckButton.Text = "Verificar Cálice"
+CheckButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CheckButton.Font = Enum.Font.SourceSansBold
+CheckButton.TextSize = 14
 
--- BUSCA OTIMIZADA (SEM TRAVAR O JOGO)
-local function CheckForChalice()
+local AutoButton = Instance.new("TextButton")
+AutoButton.Parent = Frame
+AutoButton.Position = UDim2.new(0.08, 0, 0.75, 0)
+AutoButton.Size = UDim2.new(0.84, 0, 0, 32)
+AutoButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+AutoButton.Text = "Auto Checar: DESATIVADO"
+AutoButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+AutoButton.Font = Enum.Font.SourceSansBold
+AutoButton.TextSize = 14
+
+local AutoEnabled = false
+
+-- Lógica de Detecção 100% Compatível com Solara
+local function SafeCheckChalice()
+    StatusLabel.Text = "Buscando no servidor..."
+    StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+    
+    task.wait(0.1)
+
     local found = false
-    local itemName = ""
+    local holderName = ""
 
-    -- 1. Checa apenas os itens caídos diretamente no workspace (sem descer a árvore inteira)
-    for _, obj in pairs(workspace:GetChildren()) do
-        if obj:IsA("Tool") or obj:IsA("Model") then
-            local name = string.lower(obj.Name)
-            if string.find(name, "chalice") or string.find(name, "god") then
+    -- Varredura segura apenas na raiz do workspace (evita travar a memória do Solara)
+    for _, item in pairs(workspace:GetChildren()) do
+        if item:IsA("Tool") or item:IsA("Model") then
+            local n = string.lower(item.Name)
+            if string.find(n, "chalice") or string.find(n, "god") then
                 found = true
-                itemName = obj.Name
+                holderName = "No Chão do Mapa"
                 break
             end
         end
     end
 
-    -- 2. Checa inventário e mão dos jogadores
+    -- Varredura nos inventários dos jogadores
     if not found then
-        for _, player in pairs(game:GetService("Players"):GetPlayers()) do
-            local backpack = player:FindFirstChild("Backpack")
-            local char = player.Character
+        for _, plr in pairs(Players:GetPlayers()) do
+            local bp = plr:FindFirstChild("Backpack")
+            local char = plr.Character
 
-            if backpack then
-                for _, item in pairs(backpack:GetChildren()) do
+            if bp then
+                for _, item in pairs(bp:GetChildren()) do
                     if string.find(string.lower(item.Name), "chalice") then
                         found = true
-                        itemName = item.Name
+                        holderName = plr.DisplayName
                         break
                     end
                 end
@@ -90,54 +108,48 @@ local function CheckForChalice()
                 for _, item in pairs(char:GetChildren()) do
                     if item:IsA("Tool") and string.find(string.lower(item.Name), "chalice") then
                         found = true
-                        itemName = item.Name
+                        holderName = plr.DisplayName
                         break
                     end
                 end
             end
 
             if found then break end
-            task.wait() -- Micro-pausa entre checagens de jogadores para não sobrecarregar
         end
     end
 
-    -- Retorno na interface
     if found then
-        StatusLabel.Text = "CÁLICE ENCONTRADO!"
+        StatusLabel.Text = "CÁLICE NO SERVIDO! (" .. holderName .. ")"
         StatusLabel.TextColor3 = Color3.fromRGB(50, 255, 50)
-        Fluent:Notify({ Title = "THULLERX STORE", Content = "Cálice detectado: " .. itemName, Duration = 8 })
     else
-        StatusLabel.Text = "Cálice: Não encontrado"
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-        Fluent:Notify({ Title = "THULLERX STORE", Content = "Nenhum Cálice neste servidor.", Duration = 4 })
+        StatusLabel.Text = "Nenhum Cálice Detectado"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
     end
 end
 
-Tabs.Main:AddSection("Detector de Cálice Sagrado")
+-- Conexão dos Botões
+CheckButton.MouseButton1Click:Connect(function()
+    SafeCheckChalice()
+end)
 
-Tabs.Main:AddButton({
-    Title = "Checar Cálice Agora",
-    Callback = function()
-        CheckForChalice()
-    end
-})
-
-Tabs.Main:AddToggle("AutoCheckToggle", {
-    Title = "Verificação Automática (10s)",
-    Default = false,
-    Callback = function(Value)
-        _G.AutoCheckChalice = Value
-    end
-})
-
--- Loop seguro com intervalo de 10 segundos
-task.spawn(function()
-    while true do
-        task.wait(10)
-        if _G.AutoCheckChalice then
-            CheckForChalice()
-        end
+AutoButton.MouseButton1Click:Connect(function()
+    AutoEnabled = not AutoEnabled
+    if AutoEnabled then
+        AutoButton.Text = "Auto Checar: ATIVADO"
+        AutoButton.BackgroundColor3 = Color3.fromRGB(40, 180, 40)
+        SafeCheckChalice()
+    else
+        AutoButton.Text = "Auto Checar: DESATIVADO"
+        AutoButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
     end
 end)
 
-Window:SelectTab(1)
+-- Loop em segundo plano a cada 10s (totalmente seguro para Solara)
+task.spawn(function()
+    while true do
+        task.wait(10)
+        if AutoEnabled then
+            SafeCheckChalice()
+        end
+    end
+end)
